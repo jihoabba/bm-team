@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAP Material Upload Converter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sap-blue: #0070F2;
+  --sap-dark: #1B2A4A;
+  --sap-navy: #0F1D35;
+  --accent-green: #36B37E;
+  --accent-orange: #FF8B00;
+  --accent-red: #DE350B;
+  --bg: #F4F5F7;
+  --surface: #FFFFFF;
+  --surface-alt: #F8F9FB;
+  --border: #DFE1E6;
+  --text: #172B4D;
+  --text-sub: #6B778C;
+  --text-muted: #97A0AF;
+  --radius: 10px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.12), 0 8px 32px rgba(0,0,0,0.06);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'IBM Plex Sans KR', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, var(--sap-navy) 0%, var(--sap-dark) 100%);
+  padding: 20px 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+}
+
+.header-icon {
+  width: 40px; height: 40px;
+  background: var(--sap-blue);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: #fff;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: -1px;
+}
+
+.header h1 {
+  color: #fff;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+.header-sub {
+  color: rgba(255,255,255,0.5);
+  font-size: 13px;
+  font-weight: 400;
+  margin-left: -8px;
+}
+
+/* Steps indicator */
+.steps-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex;
+  gap: 0;
+}
+
+.step-tab {
+  padding: 14px 24px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.step-tab:hover { color: var(--text-sub); }
+
+.step-tab.active {
+  color: var(--sap-blue);
+  border-bottom-color: var(--sap-blue);
+}
+
+.step-tab.done {
+  color: var(--accent-green);
+}
+
+.step-num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'IBM Plex Mono', monospace;
+  transition: all 0.2s;
+}
+
+.step-tab.active .step-num {
+  background: var(--sap-blue);
+  color: #fff;
+}
+
+.step-tab.done .step-num {
+  background: var(--accent-green);
+  color: #fff;
+}
+
+/* Main content */
+.main { padding: 24px 32px; max-width: 1600px; margin: 0 auto; }
+
+.section { display: none; }
+.section.active { display: block; }
+
+/* Upload area */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 64px 32px;
+  text-align: center;
+  background: var(--surface);
+  transition: all 0.25s;
+  cursor: pointer;
+  position: relative;
+}
+
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: var(--sap-blue);
+  background: rgba(0,112,242,0.03);
+}
+
+.upload-zone.dragover {
+  transform: scale(1.005);
+  box-shadow: 0 0 0 4px rgba(0,112,242,0.1);
+}
+
+.upload-icon {
+  width: 72px; height: 72px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px;
+}
+
+.upload-zone h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.upload-zone p {
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.upload-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* File info after upload */
+.file-info {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  display: none;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.file-info.show { display: flex; }
+
+.file-icon {
+  width: 44px; height: 44px;
+  background: #E8F5E9;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.file-meta { flex: 1; }
+.file-meta .name { font-weight: 600; font-size: 14px; }
+.file-meta .detail { color: var(--text-sub); font-size: 12px; margin-top: 2px; }
+
+.file-badge {
+  background: #E8F5E9;
+  color: #2E7D32;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+/* Parsed data preview */
+.parsed-preview {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-top: 16px;
+  display: none;
+  overflow: hidden;
+}
+
+.parsed-preview.show { display: block; }
+
+.parsed-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.parsed-header h4 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.parsed-count {
+  font-size: 12px;
+  color: var(--text-sub);
+  background: var(--surface-alt);
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+.parsed-table-wrap {
+  overflow-x: auto;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.parsed-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.parsed-table th {
+  background: var(--surface-alt);
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-sub);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.parsed-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #F0F1F3;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.parsed-table tr:hover td { background: rgba(0,112,242,0.03); }
+
+/* Step 2: Config */
+.config-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.product-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.product-card-header {
+  padding: 14px 20px;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.product-num {
+  width: 28px; height: 28px;
+  background: var(--sap-blue);
+  color: #fff;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  flex-shrink: 0;
+}
+
+.product-card-header .product-name {
+  font-weight: 600;
+  font-size: 14px;
+  flex: 1;
+}
+
+.product-card-header .product-barcode {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+.product-card-body {
+  padding: 20px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-group label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.field-group label .sap-code {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+}
+
+.field-group input,
+.field-group select {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: 'IBM Plex Sans KR', sans-serif;
+  background: #fff;
+  color: var(--text);
+  transition: border-color 0.2s;
+}
+
+.field-group input:focus,
+.field-group select:focus {
+  outline: none;
+  border-color: var(--sap-blue);
+  box-shadow: 0 0 0 3px rgba(0,112,242,0.1);
+}
+
+.field-group input.auto-filled {
+  background: #F0F7FF;
+  border-color: #B3D7FF;
+}
+
+.field-group input[readonly] {
+  background: var(--surface-alt);
+  color: var(--text-sub);
+  cursor: default;
+}
+
+.country-toggles {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.country-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.country-toggle input[type="checkbox"] {
+  accent-color: var(--sap-blue);
+}
+
+/* Global config */
+.global-config {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.global-config h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.global-config h4 .badge {
+  font-size: 10px;
+  background: var(--accent-orange);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.apply-all-btn {
+  background: var(--sap-blue);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: background 0.2s;
+}
+
+.apply-all-btn:hover { background: #005BC5; }
+
+/* Step 3: Preview */
+.preview-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.preview-toolbar {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.preview-toolbar h4 { font-size: 14px; font-weight: 600; }
+
+.download-btn {
+  background: var(--accent-green);
+  color: #fff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  font-family: 'IBM Plex Sans KR', sans-serif;
+}
+
+.download-btn:hover {
+  background: #2E9E6E;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(54,179,126,0.3);
+}
+
+.preview-table-wrap {
+  overflow: auto;
+  max-height: 70vh;
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.preview-table th {
+  background: var(--sap-dark);
+  color: #fff;
+  padding: 8px 10px;
+  text-align: left;
+  font-weight: 500;
+  font-size: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.preview-table th.sub {
+  background: #2A3F63;
+  top: 28px;
+  z-index: 2;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: rgba(255,255,255,0.6);
+}
+
+.preview-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid #F0F1F3;
+  border-right: 1px solid #F8F8F8;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+}
+
+.preview-table td.auto { background: #F0F7FF; }
+.preview-table td.manual { background: #FFF8E1; }
+.preview-table td.fixed { background: #F1F8E9; }
+
+.preview-table tr:hover td { background: rgba(0,112,242,0.05); }
+
+/* Navigation buttons */
+.nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  gap: 12px;
+}
+
+.btn {
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  font-family: 'IBM Plex Sans KR', sans-serif;
+}
+
+.btn-primary {
+  background: var(--sap-blue);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #005BC5;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--surface-alt);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Legend */
+.legend {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: var(--text-sub);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 12px; height: 12px;
+  border-radius: 3px;
+}
+
+.legend-dot.auto { background: #F0F7FF; border: 1px solid #B3D7FF; }
+.legend-dot.manual { background: #FFF8E1; border: 1px solid #FFE082; }
+.legend-dot.fixed { background: #F1F8E9; border: 1px solid #C5E1A5; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header { padding: 16px; }
+  .main { padding: 16px; }
+  .steps-bar { padding: 0 16px; overflow-x: auto; }
+  .field-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* Section titles */
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-desc {
+  font-size: 13px;
+  color: var(--text-sub);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--sap-dark);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+}
+
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Copy all section */
+.copy-section {
+  background: #FFFDE7;
+  border: 1px solid #FFF9C4;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: #F57F17;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">S</div>
+  <div>
+    <h1>SAP Material Upload Converter</h1>
+    <div class="header-sub">외부업체 제품정보서 → SAP Upload Format 자동 변환</div>
+  </div>
+</div>
+
+<div class="steps-bar">
+  <div class="step-tab active" data-step="1" onclick="goStep(1)">
+    <span class="step-num">1</span>
+    파일 업로드
+  </div>
+  <div class="step-tab" data-step="2" onclick="goStep(2)">
+    <span class="step-num">2</span>
+    SAP 필드 설정
+  </div>
+  <div class="step-tab" data-step="3" onclick="goStep(3)">
+    <span class="step-num">3</span>
+    미리보기 & 다운로드
+  </div>
+</div>
+
+<div class="main">
+  <!-- STEP 1: Upload -->
+  <div class="section active" id="step1">
+    <div class="section-title">외부업체 제품정보서 업로드</div>
+    <p class="section-desc">
+      외부업체에서 받은 <strong>제품정보서 엑셀 파일(.xlsx)</strong>을 업로드하세요.<br>
+      자동으로 제품 데이터를 파싱하여 SAP 양식에 매핑합니다.
+    </p>
+
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+      <div class="upload-icon">📄</div>
+      <h3>엑셀 파일을 드래그하거나 클릭하여 선택</h3>
+      <p>.xlsx / .xls 파일 지원</p>
+    </div>
+
+    <div class="file-info" id="fileInfo">
+      <div class="file-icon">✅</div>
+      <div class="file-meta">
+        <div class="name" id="fileName"></div>
+        <div class="detail" id="fileDetail"></div>
+      </div>
+      <div class="file-badge" id="fileBadge"></div>
+    </div>
+
+    <div class="parsed-preview" id="parsedPreview">
+      <div class="parsed-header">
+        <h4>파싱된 제품 데이터</h4>
+        <span class="parsed-count" id="parsedCount"></span>
+      </div>
+      <div class="parsed-table-wrap">
+        <table class="parsed-table" id="parsedTable"></table>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <div></div>
+      <button class="btn btn-primary" id="toStep2Btn" disabled onclick="goStep(2)">
+        다음: SAP 필드 설정 →
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 2: Configure -->
+  <div class="section" id="step2">
+    <div class="section-title">SAP 고유 필드 설정</div>
+    <p class="section-desc">
+      외부업체 파일에 없는 SAP 고유 필드를 입력하세요.
+      <strong>공통 설정</strong>을 먼저 입력하면 모든 제품에 일괄 적용됩니다.
+    </p>
+
+    <!-- Global config -->
+    <div class="global-config">
+      <h4>공통 설정 <span class="badge">일괄 적용</span></h4>
+      <div class="field-grid" id="globalFields">
+        <div class="field-group">
+          <label>자재그룹 <span class="sap-code">MATKL</span></label>
+          <select id="g_matkl">
+            <option value="">선택</option>
+            <option value="TY">TY - 완구</option>
+            <option value="CE">CE - 가전/전자</option>
+            <option value="ST">ST - 문구</option>
+            <option value="HW">HW - 생활용품</option>
+            <option value="FA">FA - 패션잡화</option>
+            <option value="FD">FD - 식품</option>
+            <option value="BT">BT - 뷰티</option>
+            <option value="BB">BB - 유아동</option>
+            <option value="SP">SP - 스포츠</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>제품군 <span class="sap-code">SPART</span></label>
+          <select id="g_spart">
+            <option value="">선택</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+            <option value="13">13</option>
+            <option value="14">14</option>
+            <option value="15">15</option>
+            <option value="16">16</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Character(대) <span class="sap-code">MVGR_1</span></label>
+          <input type="text" id="g_mvgr1" placeholder="예: 11">
+        </div>
+        <div class="field-group">
+          <label>Character(중) <span class="sap-code">MVGR_2</span></label>
+          <input type="text" id="g_mvgr2" placeholder="예: 31">
+        </div>
+        <div class="field-group">
+          <label>Character(소) <span class="sap-code">MVGR_3</span></label>
+          <input type="text" id="g_mvgr3" placeholder="예: 10">
+        </div>
+        <div class="field-group">
+          <label>Character(세) <span class="sap-code">MVGR1</span></label>
+          <input type="text" id="g_mvgr4" placeholder="예: 231">
+        </div>
+        <div class="field-group">
+          <label>브랜드가이드 <span class="sap-code">MVGR_4</span></label>
+          <input type="text" id="g_brand" placeholder="예: 16">
+        </div>
+        <div class="field-group">
+          <label>연령코드 <span class="sap-code">MVGR3</span></label>
+          <select id="g_age_code">
+            <option value="">선택</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+            <option value="13">13</option>
+            <option value="14">14</option>
+            <option value="15">15</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>MD관리자 <span class="sap-code">ZMDADM</span></label>
+          <input type="text" id="g_md" placeholder="예: 이공주">
+        </div>
+        <div class="field-group">
+          <label>비고 <span class="sap-code">ZMS19</span></label>
+          <input type="text" id="g_remark" placeholder="예: 한정판매">
+        </div>
+        <div class="field-group">
+          <label>예상납기일 <span class="sap-code">EDATU</span></label>
+          <input type="date" id="g_delivery">
+        </div>
+        <div class="field-group">
+          <label>출시국가</label>
+          <div class="country-toggles">
+            <label class="country-toggle"><input type="checkbox" id="g_kr" checked>KR</label>
+            <label class="country-toggle"><input type="checkbox" id="g_cn">CN</label>
+            <label class="country-toggle"><input type="checkbox" id="g_us">US</label>
+            <label class="country-toggle"><input type="checkbox" id="g_jp">JP</label>
+            <label class="country-toggle"><input type="checkbox" id="g_hk">HK</label>
+            <label class="country-toggle"><input type="checkbox" id="g_tw">TW</label>
+            <label class="country-toggle"><input type="checkbox" id="g_th">TH</label>
+          </div>
+        </div>
+      </div>
+      <button class="apply-all-btn" onclick="applyGlobalToAll()">전체 제품에 적용</button>
+    </div>
+
+    <!-- Per-product config -->
+    <div class="config-grid" id="productConfigs"></div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-secondary" onclick="goStep(1)">← 이전</button>
+      <button class="btn btn-primary" onclick="buildPreview(); goStep(3)">
+        다음: 미리보기 →
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 3: Preview & Download -->
+  <div class="section" id="step3">
+    <div class="section-title">SAP Upload Format 미리보기</div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot auto"></div> 자동 매핑</div>
+      <div class="legend-item"><div class="legend-dot manual"></div> 수동 입력</div>
+      <div class="legend-item"><div class="legend-dot fixed"></div> 고정값</div>
+    </div>
+
+    <div class="preview-wrap">
+      <div class="preview-toolbar">
+        <h4>Material Upload Format</h4>
+        <button class="download-btn" onclick="downloadExcel()">
+          ⬇ 엑셀 다운로드 (.xlsx)
+        </button>
+      </div>
+      <div class="preview-table-wrap">
+        <table class="preview-table" id="previewTable"></table>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-secondary" onclick="goStep(2)">← 수정하기</button>
+      <button class="download-btn" onclick="downloadExcel()" style="font-size:14px;padding:12px 32px;">
+        ⬇ SAP Upload Format 다운로드
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== DATA & STATE ====================
+let parsedProducts = [];
+let productConfigs = [];
+
+// SAP columns definition (85 columns A-CG)
+const SAP_COLS = [
+  {key:'A', kr:'자재코드', sap:'MATNR', type:'auto'},
+  {key:'B', kr:'자재유형', sap:'MTART', type:'fixed'},
+  {key:'C', kr:'자재내역', sap:'MAKTX', type:'auto'},
+  {key:'D', kr:'자재그룹', sap:'MATKL', type:'manual'},
+  {key:'E', kr:'기존자재번호', sap:'BISMT', type:'manual'},
+  {key:'F', kr:'제작방식', sap:'EXTWG', type:'fixed'},
+  {key:'G', kr:'제품군', sap:'SPART', type:'manual'},
+  {key:'H', kr:'관리법인', sap:'KOSCH', type:'fixed'},
+  {key:'I', kr:'제품계층구조', sap:'PRDHA', type:'manual'},
+  {key:'J', kr:'카테고리', sap:'PRODH_T4', type:'manual'},
+  {key:'K', kr:'품목범주', sap:'MTPOS_MARA', type:'fixed'},
+  {key:'L', kr:'자재상태', sap:'MSTAE', type:'manual'},
+  {key:'M', kr:'단종일', sap:'MSTDE', type:'manual'},
+  {key:'N', kr:'Barcode구분자', sap:'NUMTP', type:'manual'},
+  {key:'O', kr:'자재내역(EN)', sap:'MAKTX_E', type:'auto'},
+  {key:'P', kr:'자재내역(CN)', sap:'MAKTX_C', type:'auto'},
+  {key:'Q', kr:'자재내역(JP)', sap:'MAKTX_J', type:'auto'},
+  {key:'R', kr:'유통체인상태', sap:'DWERK', type:'manual'},
+  {key:'S', kr:'통계그룹', sap:'VERSG', type:'manual'},
+  {key:'T', kr:'Character(대)', sap:'MVGR_1', type:'manual'},
+  {key:'U', kr:'Character(중)', sap:'MVGR_2', type:'manual'},
+  {key:'V', kr:'Character(소)', sap:'MVGR_3', type:'manual'},
+  {key:'W', kr:'Character(세)', sap:'MVGR1', type:'manual'},
+  {key:'X', kr:'브랜드가이드', sap:'MVGR_4', type:'manual'},
+  {key:'Y', kr:'테마', sap:'MVGR2', type:'manual'},
+  {key:'Z', kr:'연령코드', sap:'MVGR3', type:'manual'},
+  {key:'AA', kr:'HS코드', sap:'STAWN', type:'auto'},
+  {key:'AB', kr:'원산지', sap:'HERKL', type:'auto'},
+  {key:'AC', kr:'판매명(KOR)', sap:'ZMAKTX_K', type:'manual'},
+  {key:'AD', kr:'판매명(ENG)', sap:'ZMAKTX_E', type:'manual'},
+  {key:'AE', kr:'판매명(中文)', sap:'ZMAKTX_C', type:'manual'},
+  {key:'AF', kr:'플랜트자재상태', sap:'MMSTA', type:'manual'},
+  {key:'AG', kr:'중요부품', sap:'KZKRI', type:'manual'},
+  {key:'AH', kr:'MRP유형', sap:'DISMM', type:'fixed'},
+  {key:'AI', kr:'재주문점', sap:'MINBE', type:'manual'},
+  {key:'AJ', kr:'MRP관리자', sap:'DISPO', type:'fixed'},
+  {key:'AK', kr:'로트크기유형', sap:'DISLS', type:'fixed'},
+  {key:'AL', kr:'MOQ', sap:'BSTMI', type:'manual'},
+  {key:'AM', kr:'최대로트크기', sap:'BSTMA', type:'manual'},
+  {key:'AN', kr:'고정로트크기', sap:'BSTFE', type:'manual'},
+  {key:'AO', kr:'특별조달유형', sap:'SOBSL', type:'manual'},
+  {key:'AP', kr:'Lead Time', sap:'PLIFZ', type:'auto'},
+  {key:'AQ', kr:'안전재고', sap:'EISBE', type:'manual'},
+  {key:'AR', kr:'통화', sap:'WAERS', type:'fixed'},
+  {key:'AS', kr:'가격', sap:'VERPR', type:'auto'},
+  {key:'AT', kr:'MD관리자', sap:'ZMDADM', type:'manual'},
+  {key:'AU', kr:'성별', sap:'ZSEC', type:'manual'},
+  {key:'AV', kr:'색상', sap:'ZCOLOR', type:'manual'},
+  {key:'AW', kr:'사이즈', sap:'ZSIZE', type:'manual'},
+  {key:'AX', kr:'스타일', sap:'ZSTYLE', type:'manual'},
+  {key:'AY', kr:'사용연령', sap:'ZAGE', type:'auto'},
+  {key:'AZ', kr:'재질', sap:'ZTYPE', type:'auto'},
+  {key:'BA', kr:'가로(cm)', sap:'ZMS01', type:'auto'},
+  {key:'BB', kr:'세로(cm)', sap:'ZMS02', type:'auto'},
+  {key:'BC', kr:'높이(cm)', sap:'ZMS03', type:'auto'},
+  {key:'BD', kr:'부피', sap:'ZMS04', type:'manual'},
+  {key:'BE', kr:'무게(kg)', sap:'ZMS05', type:'auto'},
+  {key:'BF', kr:'카톤가로', sap:'ZMS06', type:'auto'},
+  {key:'BG', kr:'카톤세로', sap:'ZMS07', type:'auto'},
+  {key:'BH', kr:'카톤높이', sap:'ZMS08', type:'auto'},
+  {key:'BI', kr:'카톤부피', sap:'ZMS09', type:'manual'},
+  {key:'BJ', kr:'카톤무게', sap:'ZMS10', type:'auto'},
+  {key:'BK', kr:'카톤수량', sap:'ZMS11', type:'auto'},
+  {key:'BL', kr:'소분수량', sap:'ZMS12', type:'manual'},
+  {key:'BM', kr:'Gross부피', sap:'ZMS13', type:'manual'},
+  {key:'BN', kr:'Gross무게', sap:'ZMS14', type:'manual'},
+  {key:'BO', kr:'파렛트박스수', sap:'ZMS15', type:'manual'},
+  {key:'BP', kr:'파렛트개수', sap:'ZMS16', type:'manual'},
+  {key:'BQ', kr:'파렛트부피', sap:'ZMS17', type:'manual'},
+  {key:'BR', kr:'파렛트무게', sap:'ZMS18', type:'manual'},
+  {key:'BS', kr:'비고', sap:'ZMS19', type:'manual'},
+  {key:'BT', kr:'IP입점사코드', sap:'ZKUNNR', type:'manual'},
+  {key:'BU', kr:'IP자재', sap:'ZIPM_MAT', type:'manual'},
+  {key:'BV', kr:'수요단위', sap:'DMAND', type:'manual'},
+  {key:'BW', kr:'판매가', sap:'PRICE', type:'auto'},
+  {key:'BX', kr:'예상납기일', sap:'EDATU', type:'manual'},
+  {key:'BY', kr:'한국출시', sap:'KRCRT', type:'manual'},
+  {key:'BZ', kr:'중국출시', sap:'CNCRT', type:'manual'},
+  {key:'CA', kr:'미국출시', sap:'USCRT', type:'manual'},
+  {key:'CB', kr:'일본출시', sap:'JPCRT', type:'manual'},
+  {key:'CC', kr:'홍콩출시', sap:'HKCRT', type:'manual'},
+  {key:'CD', kr:'대만출시', sap:'TWCRT', type:'manual'},
+  {key:'CE', kr:'태국출시', sap:'THCRT', type:'manual'},
+  {key:'CF', kr:'최소발주량', sap:'MENGE_MIN', type:'manual'},
+  {key:'CG', kr:'최대발주량', sap:'MENGE_MAX', type:'manual'},
+];
+
+// Country code mapping
+const COUNTRY_MAP = {
+  '중국': 'CN', '한국': 'KR', '일본': 'JP', '미국': 'US',
+  '대만': 'TW', '태국': 'TH', '홍콩': 'HK', '베트남': 'VN',
+  '인도네시아': 'ID', '말레이시아': 'MY', '인도': 'IN',
+  'China': 'CN', 'Korea': 'KR', 'Japan': 'JP',
+  'CN': 'CN', 'KR': 'KR', 'JP': 'JP', 'US': 'US',
+};
+
+// Age mapping
+function mapAge(raw) {
+  if (!raw) return '';
+  const s = String(raw).replace(/\s+/g, ' ').trim();
+  if (/14/.test(s)) return '+14 YRS';
+  if (/12/.test(s)) return '+12 YRS';
+  if (/8/.test(s)) return '+8 YRS';
+  if (/6/.test(s)) return '+6 YRS';
+  if (/4/.test(s)) return '+4 YRS';
+  if (/3/.test(s)) return '+3 YRS';
+  if (/전연령|전체|ALL/i.test(s)) return 'ALL';
+  return s;
+}
+
+function mapCountry(raw) {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  return COUNTRY_MAP[s] || s;
+}
+
+// ==================== FILE PARSING ====================
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+uploadZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadZone.classList.add('dragover');
+});
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) {
+    fileInput.files = e.dataTransfer.files;
+    handleFile(e.dataTransfer.files[0]);
+  }
+});
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type: 'array' });
+
+      // Find the main data sheet (first sheet or '양식')
+      let sheetName = wb.SheetNames[0];
+      if (wb.SheetNames.includes('양식')) sheetName = '양식';
+
+      const ws = wb.Sheets[sheetName];
+      parseVendorSheet(ws, file.name);
+    } catch (err) {
+      showToast('파일 파싱 오류: ' + err.message);
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function cellVal(ws, col, row) {
+  const addr = col + row;
+  const cell = ws[addr];
+  if (!cell) return null;
+  return cell.v !== undefined ? cell.v : null;
+}
+
+function parseVendorSheet(ws, fileName) {
+  // Detect header row and data rows
+  // Standard format: row 6 = headers, row 8 = example, row 9+ = data
+  // But we also try to auto-detect
+
+  const headerRow = 6;
+  const dataStartRow = 9; // skip example row 8
+
+  // Find data rows: column A has sequential numbers, column D has barcode
+  parsedProducts = [];
+
+  for (let r = dataStartRow; r <= 200; r++) {
+    const rowNum = cellVal(ws, 'A', r);
+    const barcode = cellVal(ws, 'D', r);
+
+    // Stop if no more data
+    if (rowNum === null && barcode === null) break;
+    if (typeof rowNum !== 'number') continue;
+    if (!barcode) continue;
+
+    const product = {
+      barcode: String(barcode),
+      nameKR: cellVal(ws, 'E', r) || '',
+      nameEN: cellVal(ws, 'F', r) || '',
+      nameLFSQ_KR: cellVal(ws, 'G', r) || '',
+      nameLFSQ_EN: cellVal(ws, 'H', r) || '',
+      buyPrice: cellVal(ws, 'I', r),
+      retailPrice: cellVal(ws, 'J', r),
+      orderQty: cellVal(ws, 'L', r),
+      leadtime: cellVal(ws, 'N', r),
+      ageRaw: cellVal(ws, 'O', r),
+      material: cellVal(ws, 'P', r) || '',
+      width: cellVal(ws, 'Q', r),
+      depth: cellVal(ws, 'R', r),
+      height: cellVal(ws, 'S', r),
+      weight: cellVal(ws, 'T', r),
+      pkgMaterial: cellVal(ws, 'W', r) || '',
+      pkgWidth: cellVal(ws, 'X', r),
+      pkgDepth: cellVal(ws, 'Y', r),
+      pkgHeight: cellVal(ws, 'Z', r),
+      pkgWeight: cellVal(ws, 'AA', r),
+      ctnWidth: cellVal(ws, 'AI', r),
+      ctnDepth: cellVal(ws, 'AJ', r),
+      ctnHeight: cellVal(ws, 'AK', r),
+      ctnWeight: cellVal(ws, 'AM', r),
+      ctnQty: cellVal(ws, 'AN', r),
+      origin: cellVal(ws, 'AO', r) || '',
+      manufacturer: cellVal(ws, 'AP', r) || '',
+      csPhone: cellVal(ws, 'AQ', r) || '',
+      certification: cellVal(ws, 'AR', r) || '',
+      hsCode: cellVal(ws, 'AS', r) || '',
+      warranty: cellVal(ws, 'AT', r) || '',
+      caution: cellVal(ws, 'AU', r) || '',
+      prePurchase: cellVal(ws, 'AV', r) || '',
+      salesPoint: cellVal(ws, 'AW', r) || '',
+      components: cellVal(ws, 'AX', r) || '',
+    };
+
+    parsedProducts.push(product);
+  }
+
+  // Show file info
+  document.getElementById('fileInfo').classList.add('show');
+  document.getElementById('fileName').textContent = fileName;
+  document.getElementById('fileDetail').textContent = `${parsedProducts.length}개 제품 감지됨`;
+  document.getElementById('fileBadge').textContent = '파싱 완료';
+
+  // Show parsed preview
+  showParsedPreview();
+
+  // Initialize product configs
+  initProductConfigs();
+
+  // Enable next button
+  document.getElementById('toStep2Btn').disabled = false;
+
+  showToast(`${parsedProducts.length}개 제품 데이터를 성공적으로 파싱했습니다.`);
+}
+
+function showParsedPreview() {
+  const previewDiv = document.getElementById('parsedPreview');
+  previewDiv.classList.add('show');
+  document.getElementById('parsedCount').textContent = `${parsedProducts.length}개 제품`;
+
+  const previewCols = [
+    {key: 'barcode', label: '바코드'},
+    {key: 'nameKR', label: '제품명(KR)'},
+    {key: 'nameEN', label: '제품명(EN)'},
+    {key: 'buyPrice', label: '사입가'},
+    {key: 'retailPrice', label: '소비자가'},
+    {key: 'material', label: '재질'},
+    {key: 'width', label: '가로'},
+    {key: 'depth', label: '세로'},
+    {key: 'height', label: '높이'},
+    {key: 'weight', label: '무게'},
+    {key: 'origin', label: '제조국'},
+    {key: 'hsCode', label: 'HS코드'},
+  ];
+
+  let html = '<thead><tr>';
+  previewCols.forEach(c => { html += `<th>${c.label}</th>`; });
+  html += '</tr></thead><tbody>';
+
+  parsedProducts.forEach(p => {
+    html += '<tr>';
+    previewCols.forEach(c => {
+      const v = p[c.key];
+      html += `<td>${v !== null && v !== undefined ? v : ''}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody>';
+  document.getElementById('parsedTable').innerHTML = html;
+}
+
+// ==================== STEP 2: CONFIG ====================
+function initProductConfigs() {
+  productConfigs = parsedProducts.map((p, i) => ({
+    matkl: '',
+    spart: '',
+    prdha: '',
+    prodh_t4: '',
+    mvgr_1: '',
+    mvgr_2: '',
+    mvgr_3: '',
+    mvgr1: '',
+    mvgr_4: '',
+    mvgr3: '',
+    zmdadm: '',
+    remark: '',
+    delivery: '',
+    kr: true, cn: false, us: false, jp: false, hk: false, tw: false, th: false,
+  }));
+
+  renderProductConfigs();
+}
+
+function renderProductConfigs() {
+  const container = document.getElementById('productConfigs');
+  let html = '';
+
+  parsedProducts.forEach((p, i) => {
+    const cfg = productConfigs[i];
+    html += `
+    <div class="product-card">
+      <div class="product-card-header">
+        <div class="product-num">${i+1}</div>
+        <span class="product-name">${p.nameKR || p.nameLFSQ_KR}</span>
+        <span class="product-barcode">${p.barcode}</span>
+      </div>
+      <div class="product-card-body">
+        <div class="field-grid">
+          <div class="field-group">
+            <label>자재그룹 <span class="sap-code">MATKL</span></label>
+            <select onchange="productConfigs[${i}].matkl=this.value" id="pc_${i}_matkl">
+              <option value="">선택</option>
+              <option value="TY" ${cfg.matkl==='TY'?'selected':''}>TY - 완구</option>
+              <option value="CE" ${cfg.matkl==='CE'?'selected':''}>CE - 가전/전자</option>
+              <option value="ST" ${cfg.matkl==='ST'?'selected':''}>ST - 문구</option>
+              <option value="HW" ${cfg.matkl==='HW'?'selected':''}>HW - 생활용품</option>
+              <option value="FA" ${cfg.matkl==='FA'?'selected':''}>FA - 패션잡화</option>
+              <option value="BB" ${cfg.matkl==='BB'?'selected':''}>BB - 유아동</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label>제품군 <span class="sap-code">SPART</span></label>
+            <select onchange="productConfigs[${i}].spart=this.value" id="pc_${i}_spart">
+              <option value="">선택</option>
+              ${[10,11,12,13,14,15,16,20].map(v =>
+                `<option value="${v}" ${cfg.spart==v?'selected':''}>${v}</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="field-group">
+            <label>제품계층구조 <span class="sap-code">PRDHA</span></label>
+            <input type="text" value="${cfg.prdha}" placeholder="예: CE0210"
+              onchange="productConfigs[${i}].prdha=this.value" id="pc_${i}_prdha">
+          </div>
+          <div class="field-group">
+            <label>카테고리 <span class="sap-code">PRODH_T4</span></label>
+            <select onchange="productConfigs[${i}].prodh_t4=this.value" id="pc_${i}_prodh_t4">
+              <option value="">선택</option>
+              ${[10,11,12,13,14,15,16,20].map(v =>
+                `<option value="${v}" ${cfg.prodh_t4==v?'selected':''}>${v}</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="field-group">
+            <label>Character(대) <span class="sap-code">MVGR_1</span></label>
+            <input type="text" value="${cfg.mvgr_1}" placeholder="예: 11"
+              onchange="productConfigs[${i}].mvgr_1=this.value" id="pc_${i}_mvgr_1">
+          </div>
+          <div class="field-group">
+            <label>Character(중) <span class="sap-code">MVGR_2</span></label>
+            <input type="text" value="${cfg.mvgr_2}" placeholder="예: 31"
+              onchange="productConfigs[${i}].mvgr_2=this.value" id="pc_${i}_mvgr_2">
+          </div>
+          <div class="field-group">
+            <label>Character(소) <span class="sap-code">MVGR_3</span></label>
+            <input type="text" value="${cfg.mvgr_3}" placeholder="예: 10"
+              onchange="productConfigs[${i}].mvgr_3=this.value" id="pc_${i}_mvgr_3">
+          </div>
+          <div class="field-group">
+            <label>Character(세) <span class="sap-code">MVGR1</span></label>
+            <input type="text" value="${cfg.mvgr1}" placeholder="예: 231"
+              onchange="productConfigs[${i}].mvgr1=this.value" id="pc_${i}_mvgr1">
+          </div>
+          <div class="field-group">
+            <label>브랜드가이드 <span class="sap-code">MVGR_4</span></label>
+            <input type="text" value="${cfg.mvgr_4}" placeholder="예: 16"
+              onchange="productConfigs[${i}].mvgr_4=this.value" id="pc_${i}_mvgr_4">
+          </div>
+          <div class="field-group">
+            <label>연령코드 <span class="sap-code">MVGR3</span></label>
+            <select onchange="productConfigs[${i}].mvgr3=this.value" id="pc_${i}_mvgr3">
+              <option value="">선택</option>
+              ${[11,12,13,14,15].map(v =>
+                `<option value="${v}" ${cfg.mvgr3==v?'selected':''}>${v}</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="field-group">
+            <label>MD관리자 <span class="sap-code">ZMDADM</span></label>
+            <input type="text" value="${cfg.zmdadm}" placeholder="담당자명"
+              onchange="productConfigs[${i}].zmdadm=this.value" id="pc_${i}_zmdadm">
+          </div>
+          <div class="field-group">
+            <label>비고 <span class="sap-code">ZMS19</span></label>
+            <input type="text" value="${cfg.remark}" placeholder="비고"
+              onchange="productConfigs[${i}].remark=this.value" id="pc_${i}_remark">
+          </div>
+          <div class="field-group">
+            <label>예상납기일 <span class="sap-code">EDATU</span></label>
+            <input type="date" value="${cfg.delivery}"
+              onchange="productConfigs[${i}].delivery=this.value" id="pc_${i}_delivery">
+          </div>
+          <div class="field-group">
+            <label>출시국가</label>
+            <div class="country-toggles">
+              <label class="country-toggle"><input type="checkbox" ${cfg.kr?'checked':''} onchange="productConfigs[${i}].kr=this.checked">KR</label>
+              <label class="country-toggle"><input type="checkbox" ${cfg.cn?'checked':''} onchange="productConfigs[${i}].cn=this.checked">CN</label>
+              <label class="country-toggle"><input type="checkbox" ${cfg.us?'checked':''} onchange="productConfigs[${i}].us=this.checked">US</label>
+              <label class="country-toggle"><input type="checkbox" ${cfg.jp?'checked':''} onchange="productConfigs[${i}].jp=this.checked">JP</label>
+              <label class="country-toggle"><input type="checkbox" ${cfg.hk?'checked':''} onchange="productConfigs[${i}].hk=this.checked">HK</label>
+              <label class="country-toggle"><input type="checkbox" ${cfg.tw?'checked':''} onchange="productConfigs[${i}].tw=this.checked">TW</label>
+              <label class="country-toggle"><input type="checkbox" ${cfg.th?'checked':''} onchange="productConfigs[${i}].th=this.checked">TH</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function applyGlobalToAll() {
+  const g = {
+    matkl: document.getElementById('g_matkl').value,
+    spart: document.getElementById('g_spart').value,
+    mvgr_1: document.getElementById('g_mvgr1').value,
+    mvgr_2: document.getElementById('g_mvgr2').value,
+    mvgr_3: document.getElementById('g_mvgr3').value,
+    mvgr1: document.getElementById('g_mvgr4').value,
+    mvgr_4: document.getElementById('g_brand').value,
+    mvgr3: document.getElementById('g_age_code').value,
+    zmdadm: document.getElementById('g_md').value,
+    remark: document.getElementById('g_remark').value,
+    delivery: document.getElementById('g_delivery').value,
+    kr: document.getElementById('g_kr').checked,
+    cn: document.getElementById('g_cn').checked,
+    us: document.getElementById('g_us').checked,
+    jp: document.getElementById('g_jp').checked,
+    hk: document.getElementById('g_hk').checked,
+    tw: document.getElementById('g_tw').checked,
+    th: document.getElementById('g_th').checked,
+  };
+
+  productConfigs.forEach((cfg, i) => {
+    Object.keys(g).forEach(k => {
+      if (g[k] !== '' && g[k] !== false) {
+        cfg[k] = g[k];
+      }
+    });
+    // Always apply country toggles
+    cfg.kr = g.kr; cfg.cn = g.cn; cfg.us = g.us;
+    cfg.jp = g.jp; cfg.hk = g.hk; cfg.tw = g.tw; cfg.th = g.th;
+  });
+
+  renderProductConfigs();
+  showToast('공통 설정이 모든 제품에 적용되었습니다.');
+}
+
+// ==================== STEP 3: PREVIEW & EXPORT ====================
+function buildSAPRow(product, config) {
+  const deliveryNum = config.delivery ? config.delivery.replace(/-/g, '') : '';
+
+  const row = {};
+  // Auto-mapped from vendor
+  row['A'] = product.barcode;                          // MATNR
+  row['B'] = 'HAWA';                                   // MTART (fixed)
+  row['C'] = product.nameLFSQ_KR;                      // MAKTX
+  row['D'] = config.matkl;                              // MATKL
+  row['E'] = '';                                        // BISMT
+  row['F'] = 'LICENSE';                                 // EXTWG (fixed)
+  row['G'] = config.spart;                              // SPART
+  row['H'] = 'KR00';                                   // KOSCH (fixed)
+  row['I'] = config.prdha;                              // PRDHA
+  row['J'] = config.prodh_t4;                           // PRODH_T4
+  row['K'] = 'NORM';                                    // MTPOS_MARA (fixed)
+  row['L'] = '';                                        // MSTAE
+  row['M'] = '';                                        // MSTDE
+  row['N'] = '';                                        // NUMTP
+  row['O'] = product.nameLFSQ_EN;                       // MAKTX_E
+  row['P'] = product.nameLFSQ_EN;                       // MAKTX_C (same as EN)
+  row['Q'] = product.nameLFSQ_EN;                       // MAKTX_J (same as EN)
+  row['R'] = '';                                        // DWERK
+  row['S'] = '';                                        // VERSG
+  row['T'] = config.mvgr_1;                             // MVGR_1
+  row['U'] = config.mvgr_2;                             // MVGR_2
+  row['V'] = config.mvgr_3;                             // MVGR_3
+  row['W'] = config.mvgr1;                              // MVGR1
+  row['X'] = config.mvgr_4;                             // MVGR_4
+  row['Y'] = '';                                        // MVGR2
+  row['Z'] = config.mvgr3;                              // MVGR3
+  row['AA'] = product.hsCode;                           // STAWN
+  row['AB'] = mapCountry(product.origin);               // HERKL
+  row['AC'] = '';                                       // ZMAKTX_K
+  row['AD'] = '';                                       // ZMAKTX_E
+  row['AE'] = '';                                       // ZMAKTX_C
+  row['AF'] = '';                                       // MMSTA
+  row['AG'] = '';                                       // KZKRI
+  row['AH'] = 'ND';                                     // DISMM (fixed)
+  row['AI'] = '';                                       // MINBE
+  row['AJ'] = 100;                                      // DISPO (fixed)
+  row['AK'] = 'EX';                                     // DISLS (fixed)
+  row['AL'] = '';                                       // BSTMI
+  row['AM'] = '';                                       // BSTMA
+  row['AN'] = '';                                       // BSTFE
+  row['AO'] = '';                                       // SOBSL
+  row['AP'] = product.leadtime || 14;                   // PLIFZ
+  row['AQ'] = '';                                       // EISBE
+  row['AR'] = 'KRW';                                    // WAERS (fixed)
+  row['AS'] = product.buyPrice;                         // VERPR
+  row['AT'] = config.zmdadm;                            // ZMDADM
+  row['AU'] = '';                                       // ZSEC
+  row['AV'] = '';                                       // ZCOLOR
+  row['AW'] = '';                                       // ZSIZE
+  row['AX'] = '';                                       // ZSTYLE
+  row['AY'] = mapAge(product.ageRaw);                   // ZAGE
+  row['AZ'] = product.material;                         // ZTYPE
+  row['BA'] = product.width;                            // ZMS01
+  row['BB'] = product.depth;                            // ZMS02
+  row['BC'] = product.height;                           // ZMS03
+  row['BD'] = '';                                       // ZMS04
+  row['BE'] = product.weight;                           // ZMS05
+  row['BF'] = product.ctnWidth;                         // ZMS06
+  row['BG'] = product.ctnDepth;                         // ZMS07
+  row['BH'] = product.ctnHeight;                        // ZMS08
+  row['BI'] = '';                                       // ZMS09
+  row['BJ'] = product.ctnWeight;                        // ZMS10
+  row['BK'] = product.ctnQty;                           // ZMS11
+  row['BL'] = '';                                       // ZMS12
+  row['BM'] = '';                                       // ZMS13
+  row['BN'] = '';                                       // ZMS14
+  row['BO'] = '';                                       // ZMS15
+  row['BP'] = '';                                       // ZMS16
+  row['BQ'] = '';                                       // ZMS17
+  row['BR'] = '';                                       // ZMS18
+  row['BS'] = config.remark;                            // ZMS19
+  row['BT'] = '';                                       // ZKUNNR
+  row['BU'] = '';                                       // ZIPM_MAT
+  row['BV'] = '';                                       // DMAND
+  row['BW'] = product.retailPrice;                      // PRICE
+  row['BX'] = deliveryNum ? Number(deliveryNum) : '';   // EDATU
+  row['BY'] = config.kr ? 'Y' : 'N';                   // KRCRT
+  row['BZ'] = config.cn ? 'Y' : 'N';                   // CNCRT
+  row['CA'] = config.us ? 'Y' : 'N';                   // USCRT
+  row['CB'] = config.jp ? 'Y' : 'N';                   // JPCRT
+  row['CC'] = config.hk ? 'Y' : 'N';                   // HKCRT
+  row['CD'] = config.tw ? 'Y' : 'N';                   // TWCRT
+  row['CE'] = config.th ? 'Y' : 'N';                   // THCRT
+  row['CF'] = '';                                       // MENGE_MIN
+  row['CG'] = '';                                       // MENGE_MAX
+
+  return row;
+}
+
+function buildPreview() {
+  // Sync config values from DOM before building
+  parsedProducts.forEach((_, i) => {
+    const el = (id) => document.getElementById(`pc_${i}_${id}`);
+    if (!el('matkl')) return;
+    productConfigs[i].matkl = el('matkl').value;
+    productConfigs[i].spart = el('spart').value;
+    productConfigs[i].prdha = el('prdha').value;
+    productConfigs[i].prodh_t4 = el('prodh_t4').value;
+    productConfigs[i].mvgr_1 = el('mvgr_1').value;
+    productConfigs[i].mvgr_2 = el('mvgr_2').value;
+    productConfigs[i].mvgr_3 = el('mvgr_3').value;
+    productConfigs[i].mvgr1 = el('mvgr1').value;
+    productConfigs[i].mvgr_4 = el('mvgr_4').value;
+    productConfigs[i].mvgr3 = el('mvgr3').value;
+    productConfigs[i].zmdadm = el('zmdadm').value;
+    productConfigs[i].remark = el('remark').value;
+    productConfigs[i].delivery = el('delivery').value;
+  });
+
+  const sapRows = parsedProducts.map((p, i) => buildSAPRow(p, productConfigs[i]));
+
+  // Render preview table
+  // Show only important columns to avoid overwhelming width
+  const showCols = SAP_COLS; // show all
+
+  let html = '<thead>';
+  // Korean header row
+  html += '<tr>';
+  showCols.forEach(c => {
+    html += `<th>${c.kr}</th>`;
+  });
+  html += '</tr>';
+  // SAP code row
+  html += '<tr>';
+  showCols.forEach(c => {
+    html += `<th class="sub">${c.sap}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  sapRows.forEach(row => {
+    html += '<tr>';
+    showCols.forEach(c => {
+      const v = row[c.key];
+      const cls = c.type;
+      const display = v !== null && v !== undefined && v !== '' ? v : '';
+      html += `<td class="${cls}">${display}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody>';
+  document.getElementById('previewTable').innerHTML = html;
+}
+
+// ==================== DOWNLOAD ====================
+function downloadExcel() {
+  // Sync and rebuild
+  buildPreview();
+
+  const sapRows = parsedProducts.map((p, i) => buildSAPRow(p, productConfigs[i]));
+
+  // Build worksheet data
+  // Row 1: Section headers (matching original format)
+  const sectionRow = new Array(SAP_COLS.length).fill('');
+  sectionRow[0] = 'Inintial 데이터';
+  sectionRow[2] = '기본뷰1';
+  sectionRow[17] = '영업1';
+  sectionRow[18] = '영업2';
+  sectionRow[26] = 'Foreign Trade:Export Data';
+  sectionRow[28] = 'Sales Order Text';
+  sectionRow[33] = 'MRP1';
+  sectionRow[43] = '회계뷰';
+  sectionRow[45] = '확장필드';
+
+  // Row 2: Korean headers
+  const krRow = SAP_COLS.map(c => c.kr);
+
+  // Row 3: SAP field codes
+  const sapCodeRow = SAP_COLS.map(c => c.sap);
+
+  // Data rows
+  const dataRows = sapRows.map(row => SAP_COLS.map(c => {
+    const v = row[c.key];
+    return v !== null && v !== undefined ? v : '';
+  }));
+
+  const wsData = [sectionRow, krRow, sapCodeRow, ...dataRows];
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Set column widths
+  ws['!cols'] = SAP_COLS.map((c, i) => {
+    if (i === 0) return {wch: 16}; // barcode
+    if (i === 2) return {wch: 40}; // material name
+    if (i === 14 || i === 15 || i === 16) return {wch: 35}; // EN/CN/JP names
+    return {wch: 14};
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Upload Format');
+
+  // Generate filename with date
+  const now = new Date();
+  const dateStr = now.getFullYear().toString() +
+    String(now.getMonth()+1).padStart(2,'0') +
+    String(now.getDate()).padStart(2,'0');
+
+  XLSX.writeFile(wb, `Material_Upload_Format_${dateStr}.xlsx`);
+  showToast('SAP Upload Format 엑셀 파일이 다운로드되었습니다.');
+}
+
+// ==================== NAVIGATION ====================
+function goStep(n) {
+  if (n > 1 && parsedProducts.length === 0) {
+    showToast('먼저 파일을 업로드해주세요.');
+    return;
+  }
+  if (n === 3) buildPreview();
+
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(`step${n}`).classList.add('active');
+
+  document.querySelectorAll('.step-tab').forEach(t => {
+    const s = parseInt(t.dataset.step);
+    t.classList.remove('active', 'done');
+    if (s === n) t.classList.add('active');
+    else if (s < n) t.classList.add('done');
+  });
+
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+
+</body>
+</html>
