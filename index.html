@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Report Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Noto Sans KR', 'Outfit', sans-serif;
+  background: #f5f5f7;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  text-align: center;
+  padding: 40px 24px;
+}
+
+.logo {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, #0284c7, #7c3aed);
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Outfit', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 24px;
+  letter-spacing: -1px;
+}
+
+h1 {
+  font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+  font-size: 26px;
+  font-weight: 600;
+  color: #1f2937;
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 15px;
+  color: #6b7280;
+  margin-bottom: 40px;
+}
+
+.cards {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.card {
+  display: block;
+  width: 280px;
+  padding: 36px 28px 32px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+
+.card:first-child::before { background: linear-gradient(90deg, #0284c7, #06b6d4); }
+.card:last-child::before { background: linear-gradient(90deg, #7c3aed, #ec4899); }
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  border-color: #d1d5db;
+}
+
+.card:active { transform: translateY(-2px); }
+
+.card-icon {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 18px;
+}
+
+.card:first-child .card-icon { background: rgba(2,132,199,0.08); }
+.card:last-child .card-icon { background: rgba(124,58,237,0.08); }
+
+.card-title {
+  font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.card-desc {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .cards { flex-direction: column; align-items: center; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">S</div>
+  <h1>Sales Report Tool</h1>
+  <p class="subtitle">제작하시려는 리포트를 선택해주세요.</p>
+
+  <div class="cards">
+    <a class="card" href="weekly-sales-dashboard.html">
+      <div class="card-icon">&#128202;</div>
+      <div class="card-title">주간 리포트</div>
+      <div class="card-desc">채널별 주간 세일즈 데이터를<br>880코드 기준으로 통합 분석</div>
+    </a>
+    <a class="card" href="project-report.html">
+      <div class="card-icon">&#128230;</div>
+      <div class="card-title">프로젝트 리포트</div>
+      <div class="card-desc">OTB 물량 대비 판매 현황<br>Sellthru 분석 대시보드</div>
+    </a>
+  </div>
+</div>
+</body>
+</html>
