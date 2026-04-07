@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Sales Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg-deep: #f5f5f7;
+  --bg-base: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f9fafb;
+  --bg-input: #f3f4f6;
+  --border: #e5e7eb;
+  --border-light: #d1d5db;
+  --accent: #0284c7;
+  --accent-dim: #0369a1;
+  --accent-glow: rgba(2,132,199,0.08);
+  --amber: #d97706;
+  --amber-dim: rgba(217,119,6,0.08);
+  --green: #059669;
+  --green-dim: rgba(5,150,105,0.08);
+  --rose: #dc2626;
+  --rose-dim: rgba(220,38,38,0.08);
+  --purple: #7c3aed;
+  --purple-dim: rgba(124,58,237,0.08);
+  --text: #1f2937;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --text-dim: #9ca3af;
+  --font-display: 'Outfit', 'Noto Sans KR', sans-serif;
+  --font-body: 'Noto Sans KR', 'Outfit', sans-serif;
+  --font-mono: 'DM Mono', 'SF Mono', monospace;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { font-size:14px; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background: var(--bg-input); }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius:3px; }
+
+.container { max-width:1440px; margin:0 auto; padding:0 32px 80px; }
+
+/* Header */
+header {
+  padding:32px 0 24px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:28px;
+  display:flex; align-items:flex-end; justify-content:space-between; gap:16px;
+}
+.logo { display:flex; align-items:center; gap:14px; }
+.logo-icon {
+  width:38px; height:38px;
+  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; font-weight:700; color:#fff;
+  font-family: var(--font-display); letter-spacing:-1px;
+}
+h1 { font-family:var(--font-display); font-size:22px; font-weight:600; letter-spacing:-0.5px; }
+h1 span { font-weight:300; color:var(--text-muted); margin-left:6px; font-size:15px; }
+.header-actions { display:flex; gap:10px; }
+
+/* Buttons */
+.btn {
+  font-family:var(--font-body); font-size:13px; font-weight:500;
+  padding:9px 18px; border-radius:var(--radius-sm);
+  border:1px solid var(--border); background:var(--bg-card);
+  color:var(--text-secondary); cursor:pointer; transition:all 0.15s;
+  display:inline-flex; align-items:center; gap:7px; white-space:nowrap;
+}
+.btn:hover { background:var(--bg-card-hover); color:var(--text); border-color:var(--border-light); }
+.btn:active { transform:scale(0.97); }
+.btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+.btn-primary:hover { background:var(--accent-dim); border-color:var(--accent-dim); color:#fff; }
+.btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+/* Upload Zones */
+.upload-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.upload-zone {
+  border:2px dashed var(--border); border-radius:var(--radius);
+  padding:36px 24px; text-align:center; transition:all 0.2s;
+  cursor:pointer; background:var(--bg-base); position:relative;
+}
+.upload-zone:hover, .upload-zone.dragover { border-color:var(--accent); background:var(--accent-glow); }
+.upload-zone.loaded { border-color:var(--green); border-style:solid; background:var(--green-dim); }
+.upload-icon { font-size:28px; margin-bottom:10px; }
+.upload-title { font-family:var(--font-display); font-size:15px; font-weight:500; margin-bottom:4px; }
+.upload-desc { font-size:12px; color:var(--text-muted); line-height:1.5; }
+.upload-desc b { color:var(--accent); font-weight:500; }
+.upload-check { color:var(--green); font-weight:600; font-size:13px; margin-top:8px; }
+input[type="file"] { display:none; }
+
+/* File chips */
+.file-chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+.file-chip {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 14px; border-radius:var(--radius-sm);
+  font-size:12.5px; font-weight:500;
+  border:1px solid var(--border); background:var(--bg-card);
+  animation: chipIn 0.3s ease;
+}
+.file-chip .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.file-chip .remove { cursor:pointer; color:var(--text-muted); margin-left:4px; font-size:15px; line-height:1; }
+.file-chip .remove:hover { color:var(--rose); }
+.channel-29cm .dot { background:var(--accent); }
+.channel-smartstore .dot { background:var(--green); }
+.channel-offline .dot { background:var(--amber); }
+.channel-shopify .dot { background:var(--purple); }
+@keyframes chipIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+/* Dashboard */
+#dashboard { display:none; }
+#dashboard.visible { display:block; animation: fadeUp 0.4s ease; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+
+/* Summary Cards */
+.summary-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:28px; }
+.summary-card {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:18px 20px;
+  position:relative; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04);
+}
+.summary-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+.summary-card:nth-child(1)::before { background:var(--accent); }
+.summary-card:nth-child(2)::before { background:var(--amber); }
+.summary-card:nth-child(3)::before { background:var(--green); }
+.summary-card:nth-child(4)::before { background:var(--rose); }
+.summary-card:nth-child(5)::before { background:var(--purple); }
+.card-label { font-size:11px; font-weight:500; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:8px; }
+.card-value { font-family:var(--font-mono); font-size:24px; font-weight:500; letter-spacing:-0.5px; }
+.card-sub { font-size:11.5px; color:var(--text-dim); margin-top:5px; font-family:var(--font-mono); }
+
+/* Section */
+.section { margin-bottom:28px; }
+.section-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:14px; padding-bottom:10px; border-bottom:1px solid var(--border);
+}
+.section-title {
+  font-family:var(--font-display); font-size:15px; font-weight:600;
+  display:flex; align-items:center; gap:8px;
+}
+.section-title .num {
+  font-family:var(--font-mono); font-size:11px; color:var(--accent);
+  background:var(--accent-glow); padding:2px 8px; border-radius:4px; font-weight:500;
+}
+
+/* Tables */
+.table-wrap {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04);
+}
+.table-scroll { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+thead th {
+  background:var(--bg-input); padding:11px 14px; text-align:left;
+  font-weight:600; font-size:11.5px; color:var(--text-muted);
+  text-transform:uppercase; letter-spacing:0.5px;
+  border-bottom:1px solid var(--border); white-space:nowrap;
+  position:sticky; top:0; z-index:1;
+}
+thead th.num-col { text-align:right; }
+tbody td { padding:10px 14px; border-bottom:1px solid var(--border); white-space:nowrap; }
+tbody tr:hover { background:rgba(2,132,199,0.04); }
+tbody tr:last-child td { border-bottom:none; }
+td.num { text-align:right; font-family:var(--font-mono); font-size:12.5px; }
+td.sku { font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); }
+.total-row td { font-weight:700; background:var(--bg-input); border-top:2px solid var(--border-light); }
+th.sortable { cursor:pointer; user-select:none; }
+th.sortable:hover { color:var(--text-secondary); }
+th.sort-asc::after { content:' \u25B2'; font-size:9px; }
+th.sort-desc::after { content:' \u25BC'; font-size:9px; }
+
+/* Channel Tags */
+.channel-tag { display:inline-block; padding:3px 10px; border-radius:4px; font-size:11.5px; font-weight:500; }
+.tag-29cm { background:var(--accent-glow); color:var(--accent); }
+.tag-smartstore { background:var(--green-dim); color:var(--green); }
+.tag-offline { background:var(--amber-dim); color:var(--amber); }
+.tag-shopify { background:var(--purple-dim); color:var(--purple); }
+
+/* Category Tag */
+.cat-tag {
+  display:inline-block; padding:2px 8px; border-radius:4px;
+  font-size:11px; font-weight:500; background:var(--bg-input);
+  color:var(--text-secondary); border:1px solid var(--border);
+}
+
+/* Percent bar */
+.pct-bar-wrap { display:flex; align-items:center; gap:10px; }
+.pct-bar { width:80px; height:6px; background:var(--bg-deep); border-radius:3px; overflow:hidden; flex-shrink:0; }
+.pct-bar-fill { height:100%; border-radius:3px; transition:width 0.6s ease; }
+.pct-val { font-family:var(--font-mono); font-size:12px; color:var(--text-secondary); min-width:42px; text-align:right; }
+
+/* Sellthru badge */
+.sellthru-badge { display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:12px; }
+.sellthru-bar { width:52px; height:6px; background:var(--bg-deep); border-radius:3px; overflow:hidden; }
+.sellthru-fill { height:100%; border-radius:3px; transition:width 0.4s ease; }
+.sellthru-fill.high { background:var(--rose); }
+.sellthru-fill.mid { background:var(--amber); }
+.sellthru-fill.low { background:var(--green); }
+.sellthru-val { min-width:42px; text-align:right; }
+.sellthru-val.high { color:var(--rose); }
+.sellthru-val.mid { color:var(--amber); }
+.sellthru-val.low { color:var(--green); }
+.sellthru-na { color:var(--text-dim); font-family:var(--font-mono); font-size:11px; }
+
+/* Tabs */
+.tabs { display:inline-flex; gap:2px; background:var(--bg-input); border-radius:var(--radius-sm); padding:3px; }
+.tab {
+  font-family:var(--font-body); font-size:12.5px; font-weight:500;
+  padding:7px 16px; border-radius:4px; border:none;
+  background:transparent; color:var(--text-muted); cursor:pointer; transition:all 0.15s;
+}
+.tab:hover { color:var(--text-secondary); }
+.tab.active { background:var(--bg-card); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,0.08); border:1px solid var(--border); }
+
+/* Search */
+.search-bar { display:flex; align-items:center; gap:10px; }
+.search-input {
+  font-family:var(--font-body); font-size:13px; padding:8px 14px;
+  border-radius:var(--radius-sm); border:1px solid var(--border);
+  background:var(--bg-input); color:var(--text); outline:none; width:260px;
+  transition:border-color 0.15s;
+}
+.search-input:focus { border-color:var(--accent); }
+.search-input::placeholder { color:var(--text-dim); }
+
+/* Pagination */
+.pagination {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; border-top:1px solid var(--border);
+  background:var(--bg-input); font-size:12.5px; color:var(--text-muted);
+}
+.pagination .page-info { font-family:var(--font-mono); }
+.page-btns { display:flex; gap:4px; }
+.page-btn {
+  font-family:var(--font-body); padding:5px 12px; border-radius:4px;
+  border:1px solid var(--border); background:var(--bg-card);
+  color:var(--text-secondary); cursor:pointer; font-size:12px;
+}
+.page-btn:hover { background:var(--bg-card-hover); color:var(--text); }
+.page-btn:disabled { opacity:0.3; cursor:not-allowed; }
+
+/* Cross-tab sticky */
+.crosstab-scroll { overflow-x:auto; max-height:520px; overflow-y:auto; }
+.crosstab-scroll th:first-child, .crosstab-scroll td:first-child { position:sticky; left:0; z-index:2; background:var(--bg-card); }
+.crosstab-scroll thead th:first-child { background:var(--bg-input); z-index:3; }
+
+/* Channel filters */
+.channel-filters { display:flex; gap:6px; flex-wrap:wrap; }
+.channel-filter {
+  font-family:var(--font-body); font-size:12px; padding:5px 12px;
+  border-radius:4px; border:1px solid var(--border); background:var(--bg-card);
+  color:var(--text-muted); cursor:pointer; transition:all 0.15s;
+}
+.channel-filter.active { border-color:var(--accent); color:var(--accent); background:var(--accent-glow); }
+
+/* Date chart */
+.date-bar-group { display:flex; flex-direction:column; align-items:center; flex:1; min-width:36px; max-width:80px; gap:4px; }
+.date-bar-stack { width:100%; display:flex; flex-direction:column-reverse; border-radius:4px 4px 0 0; overflow:hidden; transition:height 0.4s ease; }
+.date-bar-seg { width:100%; min-height:0; transition:height 0.4s ease; }
+.date-bar-seg:hover { opacity:0.8; }
+.date-bar-label { font-family:var(--font-mono); font-size:9.5px; color:var(--text-dim); white-space:nowrap; margin-top:2px; }
+.date-bar-val { font-family:var(--font-mono); font-size:10px; color:var(--text-secondary); white-space:nowrap; }
+#dateTable tbody tr.weekend { background:rgba(217,119,6,0.05); }
+
+.empty-state { padding:48px 24px; text-align:center; color:var(--text-dim); font-size:13px; }
+
+@media (max-width:768px) {
+  .container { padding:0 16px 60px; }
+  .summary-grid { grid-template-columns:repeat(2,1fr); }
+  .upload-row { grid-template-columns:1fr; }
+  header { flex-direction:column; align-items:flex-start; }
+  .search-input { width:100%; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">P</div>
+      <h1>Project Report<span id="projectName"></span></h1>
+    </div>
+    <div class="header-actions" id="headerActions" style="display:none;">
+      <button class="btn" onclick="resetAll()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+        초기화
+      </button>
+      <button class="btn btn-primary" onclick="downloadExcel()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        엑셀 다운로드
+      </button>
+    </div>
+  </header>
+
+  <!-- Upload Row -->
+  <div class="upload-row">
+    <div class="upload-zone" id="otbZone" onclick="document.getElementById('otbInput').click()">
+      <div class="upload-icon">&#128230;</div>
+      <div class="upload-title">OTB (물량) 파일</div>
+      <div class="upload-desc">프로젝트 제품 목록 + 초기 물량 엑셀<br><b>품번</b>, <b>상품명</b>, <b>KR Total</b>, <b>구분자</b>, <b>가격</b></div>
+      <div class="upload-check" id="otbCheck"></div>
+      <input type="file" id="otbInput" accept=".xlsx,.xls,.csv">
+    </div>
+    <div class="upload-zone" id="salesZone" onclick="document.getElementById('salesInput').click()">
+      <div class="upload-icon">&#128202;</div>
+      <div class="upload-title">세일즈 파일</div>
+      <div class="upload-desc">채널별 주간 판매 데이터 (복수 파일 가능)<br><b>29CM</b> &middot; <b>스마트스토어</b> &middot; <b>오프라인</b> &middot; <b>통합몰</b></div>
+      <div class="upload-check" id="salesCheck"></div>
+      <input type="file" id="salesInput" multiple accept=".xlsx,.xls,.csv">
+    </div>
+  </div>
+
+  <div class="file-chips" id="fileChips"></div>
+
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <!-- Summary -->
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="card-label">OTB (총 물량)</div>
+        <div class="card-value" id="cardOtb">0</div>
+        <div class="card-sub" id="cardOtbSub"></div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">판매 수량</div>
+        <div class="card-value" id="cardSold">0</div>
+        <div class="card-sub" id="cardSoldSub"></div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">판매 금액</div>
+        <div class="card-value" id="cardAmt">0</div>
+        <div class="card-sub" id="cardAmtSub"></div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">잔여 수량</div>
+        <div class="card-value" id="cardRemain">0</div>
+        <div class="card-sub" id="cardRemainSub"></div>
+      </div>
+      <div class="summary-card">
+        <div class="card-label">Sellthru</div>
+        <div class="card-value" id="cardSellthru">0%</div>
+        <div class="card-sub" id="cardSellthruSub"></div>
+      </div>
+    </div>
+
+    <!-- 01 By Store -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="num">01</span> By Store</div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table id="storeTable">
+            <thead><tr>
+              <th>Channel / Store</th>
+              <th class="num-col">OTB</th>
+              <th class="num-col">판매 수량</th>
+              <th class="num-col">판매 금액</th>
+              <th class="num-col">잔여</th>
+              <th>Sellthru</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 02 By Category (구분자) -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="num">02</span> By Category</div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table id="categoryTable">
+            <thead><tr>
+              <th>구분자</th>
+              <th class="num-col">SKU 수</th>
+              <th class="num-col">OTB</th>
+              <th class="num-col">판매 수량</th>
+              <th class="num-col">판매 금액</th>
+              <th class="num-col">잔여</th>
+              <th>Sellthru</th>
+              <th>금액 비중</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03 By Date -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="num">03</span> By Date</div>
+        <div class="tabs" id="dateModeTabs">
+          <button class="tab active" onclick="setDateMode('qty')">수량</button>
+          <button class="tab" onclick="setDateMode('amt')">금액</button>
+        </div>
+      </div>
+      <div class="table-wrap" style="padding:20px 20px 12px;">
+        <div id="dateChart" style="display:flex; align-items:flex-end; gap:3px; height:120px; overflow-x:auto;"></div>
+      </div>
+      <div class="table-wrap" style="margin-top:10px;">
+        <div class="table-scroll" style="max-height:400px; overflow-y:auto;">
+          <table id="dateTable"><thead><tr></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 By Product -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="num">04</span> By Product</div>
+        <div class="search-bar">
+          <input class="search-input" id="productSearch" placeholder="상품명 또는 880코드 검색..." oninput="renderProductTable()">
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll" style="max-height:560px; overflow-y:auto;">
+          <table id="productTable">
+            <thead><tr>
+              <th class="sortable" data-sort="sku">880코드</th>
+              <th class="sortable" data-sort="name">상품명</th>
+              <th>구분자</th>
+              <th class="num-col sortable" data-sort="otb">OTB</th>
+              <th class="num-col sortable" data-sort="qty">판매</th>
+              <th class="num-col sortable" data-sort="amt">금액</th>
+              <th class="num-col sortable" data-sort="remaining">잔여</th>
+              <th class="num-col sortable" data-sort="sellthru">Sellthru</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 05 Product x Store -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="num">05</span> Product &times; Store</div>
+        <div class="tabs" id="crossTabTabs">
+          <button class="tab active" onclick="setCrossTabMode('qty')">수량</button>
+          <button class="tab" onclick="setCrossTabMode('amt')">금액</button>
+          <button class="tab" onclick="setCrossTabMode('sellthru')">Sellthru</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="crosstab-scroll"><table id="crossTabTable"><thead><tr></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- 06 Raw Data -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title"><span class="num">06</span> Raw Data</div>
+        <div class="search-bar">
+          <div class="channel-filters" id="rawFilters"></div>
+          <input class="search-input" id="rawSearch" placeholder="검색..." oninput="renderRawTable()">
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll" style="max-height:480px; overflow-y:auto;">
+          <table id="rawTable">
+            <thead><tr>
+              <th>Channel</th><th>Store</th><th>Date</th>
+              <th>880코드</th><th>상품명</th>
+              <th class="num-col">수량</th><th class="num-col">판매금액</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="rawPagination"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ───
+let otbProducts = {}; // { sku: { sku, name, otbTotal, otbOffline, otbOnline, category, price } }
+let allData = [];     // filtered sales data (only OTB products)
+let allRawData = [];  // all sales data before filter
+let loadedFiles = {};
+let productSortKey = 'sellthru';
+let productSortDir = -1;
+let crossTabMode = 'qty';
+let dateMode = 'qty';
+let rawPage = 0;
+const RAW_PAGE_SIZE = 200;
+let rawChannelFilter = 'all';
+
+// ─── Channel Config ───
+const CHANNEL_CONFIGS = {
+  '29CM': {
+    headerRow: row => row.includes('88코드'),
+    map: { sku:'88코드', name:'상품명', qty:'수량', amount:'실 판매액', date:'주문일시', store:null },
+    calcAmount: (row,m) => num(row[m.amount]),
+    channelLabel:'29CM', tagClass:'tag-29cm', chipClass:'channel-29cm', color:'#0284c7',
+  },
+  '스마트스토어': {
+    headerRow: row => row.includes('단품코드'),
+    map: { sku:'단품코드', name:'쇼핑몰상품명', qty:'주문수량', amount:'결제금액', date:'주문일자', store:null },
+    calcAmount: (row,m) => num(row[m.amount]),
+    channelLabel:'스마트스토어', tagClass:'tag-smartstore', chipClass:'channel-smartstore', color:'#059669',
+  },
+  '오프라인': {
+    headerRow: row => row.includes('바코드') && row.includes('매장명'),
+    map: { sku:'바코드', name:'품목명', qty:'수량', amount:'결제 금액', date:'일자', store:'매장명' },
+    calcAmount: (row,m) => num(row[m.amount]),
+    channelLabel:'오프라인', tagClass:'tag-offline', chipClass:'channel-offline', color:'#d97706',
+  },
+  '통합몰': {
+    headerRow: row => row.includes('Lineitem sku'),
+    map: { sku:'Lineitem sku', name:'Lineitem name', qty:'Lineitem quantity', amount:'Lineitem price', date:'Created at', store:null },
+    calcAmount: (row,m) => num(row[m.amount]) * Math.max(1, num(row[m.qty])),
+    channelLabel:'통합몰', tagClass:'tag-shopify', chipClass:'channel-shopify', color:'#7c3aed',
+  },
+};
+const CHANNEL_COLORS = { '통합몰':'#7c3aed', '29CM':'#0284c7', '스마트스토어':'#059669', '오프라인':'#d97706' };
+const DAY_NAMES = ['일','월','화','수','목','금','토'];
+
+// ─── Utilities ───
+function num(v) { if(v==null||v==='')return 0; if(typeof v==='number')return v; return parseFloat(String(v).replace(/[^0-9.\-]/g,''))||0; }
+function fmtNum(n) { return Math.round(n).toLocaleString('ko-KR'); }
+function fmtCurrency(n) { if(n>=100000000) return (n/100000000).toFixed(1)+'억'; if(n>=10000) return (n/10000).toFixed(0)+'만'; return fmtNum(n); }
+function normDate(v) {
+  if(!v)return''; if(v instanceof Date) return v.toISOString().slice(0,10);
+  const s=String(v).trim();
+  if(/^\d{8}$/.test(s)) return s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8);
+  const m=s.match(/(\d{4})-(\d{2})-(\d{2})/); if(m) return m[0]; return s;
+}
+function normSku(v) { if(v==null||v==='')return''; return String(v).trim().replace(/\.0$/,''); }
+
+function pctBar(ratio, color) {
+  const pct = Math.round(ratio*1000)/10;
+  return `<div class="pct-bar-wrap"><div class="pct-bar"><div class="pct-bar-fill" style="width:${pct}%;background:${color};"></div></div><span class="pct-val">${pct.toFixed(1)}%</span></div>`;
+}
+function sellthruBadge(sold, otb) {
+  if(!otb||otb<=0) return '<span class="sellthru-na">-</span>';
+  const pct=Math.round(sold/otb*1000)/10, clamp=Math.min(pct,100);
+  const lv=pct>=80?'high':pct>=40?'mid':'low';
+  return `<div class="sellthru-badge"><div class="sellthru-bar"><div class="sellthru-fill ${lv}" style="width:${clamp}%;"></div></div><span class="sellthru-val ${lv}">${pct.toFixed(1)}%</span></div>`;
+}
+
+// ─── File Parsing ───
+function parseFile(file) {
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=e=>{ try{ resolve(XLSX.read(e.target.result,{type:'array',cellDates:true})); }catch(err){reject(err);} };
+    r.onerror=reject; r.readAsArrayBuffer(file);
+  });
+}
+
+function detectChannel(ws) {
+  const range=XLSX.utils.decode_range(ws['!ref']||'A1');
+  for(let r=0;r<=Math.min(range.e.r,5);r++){
+    const row=[];
+    for(let c=range.s.c;c<=range.e.c;c++){
+      const cell=ws[XLSX.utils.encode_cell({r,c})];
+      row.push(cell?String(cell.v||'').trim():'');
+    }
+    for(const[name,cfg] of Object.entries(CHANNEL_CONFIGS)){
+      if(cfg.headerRow(row)) return {channel:name,headerRowIndex:r};
+    }
+  }
+  return null;
+}
+
+function extractSalesData(ws, channelName, headerRowIndex) {
+  const cfg=CHANNEL_CONFIGS[channelName];
+  const json=XLSX.utils.sheet_to_json(ws,{range:headerRowIndex,defval:''});
+  const m=cfg.map, rows=[];
+  for(const row of json){
+    const sku=normSku(row[m.sku]); if(!sku) continue;
+    const qty=num(row[m.qty]); if(qty===0) continue;
+    rows.push({
+      channel:channelName,
+      store: m.store? String(row[m.store]||'').trim() : cfg.channelLabel,
+      date: normDate(row[m.date]),
+      sku, name: String(row[m.name]||'').trim(),
+      qty, amount: cfg.calcAmount(row,m),
+    });
+  }
+  return rows;
+}
+
+// ─── OTB File Handler ───
+async function handleOtbFile(files) {
+  if(!files||!files[0]) return;
+  try {
+    const wb = await parseFile(files[0]);
+    otbProducts = {};
+    for(const sheetName of wb.SheetNames) {
+      const ws=wb.Sheets[sheetName];
+      const json=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(json.length===0) continue;
+      const headers=Object.keys(json[0]);
+      // Detect columns
+      const skuCol = headers.find(h=>/품번|88코드|바코드|sku|product_sku/i.test(h));
+      const nameCol = headers.find(h=>/상품명|product_name/i.test(h));
+      const totalCol = headers.find(h=>/KR Total|total|합계/i.test(h));
+      const offlineCol = headers.find(h=>/오프라인|offline/i.test(h));
+      const onlineCol = headers.find(h=>/통합몰|online|온라인/i.test(h));
+      const catCol = headers.find(h=>/구분자|category|division/i.test(h));
+      const priceCol = headers.find(h=>/가격|price|단가/i.test(h));
+      if(!skuCol) continue;
+      for(const row of json) {
+        const sku = normSku(row[skuCol]);
+        if(!sku) continue;
+        otbProducts[sku] = {
+          sku,
+          name: nameCol ? String(row[nameCol]||'') : '',
+          otbTotal: totalCol ? num(row[totalCol]) : 0,
+          otbOffline: offlineCol ? num(row[offlineCol]) : 0,
+          otbOnline: onlineCol ? num(row[onlineCol]) : 0,
+          category: catCol ? String(row[catCol]||'') : '',
+          price: priceCol ? num(row[priceCol]) : 0,
+        };
+      }
+      if(Object.keys(otbProducts).length>0) break;
+    }
+    const cnt = Object.keys(otbProducts).length;
+    if(cnt>0) {
+      document.getElementById('otbCheck').textContent = `${cnt}개 SKU 로드 완료`;
+      document.getElementById('otbZone').classList.add('loaded');
+      filterAndRender();
+    } else {
+      alert('OTB 데이터를 찾을 수 없습니다.');
+    }
+  } catch(err) { alert('OTB 파일 오류: '+err.message); }
+}
+
+// ─── Sales File Handler ───
+async function handleSalesFiles(files) {
+  for(const file of files) {
+    if(loadedFiles[file.name]) continue;
+    try {
+      const wb = await parseFile(file);
+      let found = false;
+      for(const sheetName of wb.SheetNames) {
+        const ws=wb.Sheets[sheetName];
+        const det=detectChannel(ws);
+        if(det) {
+          const rows=extractSalesData(ws,det.channel,det.headerRowIndex);
+          if(rows.length>0) {
+            allRawData.push(...rows);
+            loadedFiles[file.name]={channel:det.channel, count:rows.length};
+            found=true; break;
+          }
+        }
+      }
+      if(!found) alert(`"${file.name}"에서 채널 데이터를 찾을 수 없습니다.`);
+    } catch(err) { alert(`"${file.name}" 오류: ${err.message}`); }
+  }
+  const salesCnt = allRawData.length;
+  if(salesCnt>0) {
+    document.getElementById('salesCheck').textContent = `${fmtNum(salesCnt)}건 로드 완료`;
+    document.getElementById('salesZone').classList.add('loaded');
+  }
+  renderFileChips();
+  filterAndRender();
+}
+
+function filterAndRender() {
+  const otbSkus = new Set(Object.keys(otbProducts));
+  if(otbSkus.size === 0) { allData=[]; return; }
+  // Filter sales to only OTB products
+  allData = allRawData.filter(d => otbSkus.has(d.sku));
+  if(allData.length>0 || otbSkus.size>0) renderDashboard();
+}
+
+// ─── Render ───
+function renderFileChips() {
+  const wrap=document.getElementById('fileChips'); wrap.innerHTML='';
+  for(const[fname,info] of Object.entries(loadedFiles)){
+    const cfg=CHANNEL_CONFIGS[info.channel];
+    const chip=document.createElement('div');
+    chip.className=`file-chip ${cfg.chipClass}`;
+    chip.innerHTML=`<span class="dot"></span>${cfg.channelLabel} <span style="color:var(--text-dim)">(${fmtNum(info.count)}건)</span>`;
+    wrap.appendChild(chip);
+  }
+}
+
+function resetAll() {
+  otbProducts={}; allData=[]; allRawData=[]; loadedFiles={};
+  rawPage=0; rawChannelFilter='all';
+  document.getElementById('otbCheck').textContent='';
+  document.getElementById('salesCheck').textContent='';
+  document.getElementById('otbZone').classList.remove('loaded');
+  document.getElementById('salesZone').classList.remove('loaded');
+  document.getElementById('fileChips').innerHTML='';
+  document.getElementById('dashboard').classList.remove('visible');
+  document.getElementById('headerActions').style.display='none';
+  document.getElementById('otbInput').value='';
+  document.getElementById('salesInput').value='';
+}
+
+function renderDashboard() {
+  document.getElementById('dashboard').classList.add('visible');
+  document.getElementById('headerActions').style.display='flex';
+  renderSummary();
+  renderStoreTable();
+  renderCategoryTable();
+  renderDateSection();
+  renderProductTable();
+  renderCrossTab();
+  renderRawFilters();
+  renderRawTable();
+}
+
+function renderSummary() {
+  const otbTotal = Object.values(otbProducts).reduce((s,p)=>s+p.otbTotal,0);
+  const soldQty = allData.reduce((s,d)=>s+d.qty,0);
+  const soldAmt = allData.reduce((s,d)=>s+d.amount,0);
+  const remain = otbTotal - soldQty;
+  const st = otbTotal>0 ? (soldQty/otbTotal*100).toFixed(1) : '0';
+  const skuCount = Object.keys(otbProducts).length;
+  const otbAmt = Object.values(otbProducts).reduce((s,p)=>s+p.otbTotal*p.price,0);
+
+  document.getElementById('cardOtb').textContent = fmtNum(otbTotal);
+  document.getElementById('cardOtbSub').textContent = `${skuCount} SKU · ₩${fmtCurrency(otbAmt)}`;
+  document.getElementById('cardSold').textContent = fmtNum(soldQty);
+  document.getElementById('cardSoldSub').textContent = `${fmtNum(allData.length)} rows`;
+  document.getElementById('cardAmt').textContent = '₩'+fmtCurrency(soldAmt);
+  document.getElementById('cardAmtSub').textContent = soldQty>0 ? `avg ₩${fmtNum(Math.round(soldAmt/soldQty))} / unit` : '';
+  document.getElementById('cardRemain').textContent = fmtNum(remain);
+  document.getElementById('cardRemainSub').textContent = remain<0 ? '초과 판매' : '';
+  document.getElementById('cardSellthru').textContent = st+'%';
+  const stNum = parseFloat(st);
+  document.getElementById('cardSellthru').style.color = stNum>=80?'var(--rose)':stNum>=40?'var(--amber)':'var(--green)';
+  document.getElementById('cardSellthruSub').textContent = `${fmtNum(soldQty)} / ${fmtNum(otbTotal)}`;
+}
+
+// ─── 01 By Store ───
+function renderStoreTable() {
+  // OTB by channel
+  let otbOfflineTotal=0, otbOnlineTotal=0, otbGrand=0;
+  for(const p of Object.values(otbProducts)) {
+    otbOfflineTotal += p.otbOffline;
+    otbOnlineTotal += p.otbOnline;
+    otbGrand += p.otbTotal;
+  }
+
+  // Sales by channel>store
+  const storeMap={};
+  for(const d of allData) {
+    const key=d.channel+'|||'+d.store;
+    if(!storeMap[key]) storeMap[key]={channel:d.channel, store:d.store, qty:0, amt:0};
+    storeMap[key].qty+=d.qty; storeMap[key].amt+=d.amount;
+  }
+  const channelMap={};
+  for(const s of Object.values(storeMap)) {
+    if(!channelMap[s.channel]) channelMap[s.channel]={qty:0,amt:0};
+    channelMap[s.channel].qty+=s.qty; channelMap[s.channel].amt+=s.amount;
+  }
+
+  const stores=Object.values(storeMap).sort((a,b)=>b.amt-a.amt);
+  const totalSold=allData.reduce((s,d)=>s+d.qty,0);
+  const totalAmt=allData.reduce((s,d)=>s+d.amount,0);
+
+  const tbody=document.querySelector('#storeTable tbody');
+  let html='';
+  const channelOrder=['통합몰','29CM','스마트스토어','오프라인'];
+  const sorted=Object.keys(channelMap).sort((a,b)=>{
+    const ai=channelOrder.indexOf(a), bi=channelOrder.indexOf(b);
+    return (ai===-1?99:ai)-(bi===-1?99:bi);
+  });
+
+  for(const ch of sorted) {
+    const cfg=CHANNEL_CONFIGS[ch];
+    const chStores=stores.filter(s=>s.channel===ch);
+    const chData=channelMap[ch];
+    // OTB for this channel
+    const chOtb = ch==='오프라인' ? otbOfflineTotal : (ch==='통합몰'||ch==='29CM'||ch==='스마트스토어') ? otbOnlineTotal : 0;
+
+    if(chStores.length===1 && chStores[0].store===ch) {
+      html+=`<tr>
+        <td><span class="channel-tag ${cfg.tagClass}">${ch}</span></td>
+        <td class="num">${fmtNum(chOtb)}</td>
+        <td class="num">${fmtNum(chData.qty)}</td>
+        <td class="num">₩${fmtNum(chData.amt)}</td>
+        <td class="num">${chOtb>0?fmtNum(chOtb-chData.qty):'-'}</td>
+        <td>${sellthruBadge(chData.qty, chOtb)}</td>
+      </tr>`;
+    } else {
+      html+=`<tr style="background:var(--bg-input);">
+        <td><span class="channel-tag ${cfg.tagClass}">${ch}</span> <span style="color:var(--text-dim);font-size:11px;margin-left:4px;">(${chStores.length} stores)</span></td>
+        <td class="num" style="font-weight:600;">${fmtNum(chOtb)}</td>
+        <td class="num" style="font-weight:600;">${fmtNum(chData.qty)}</td>
+        <td class="num" style="font-weight:600;">₩${fmtNum(chData.amt)}</td>
+        <td class="num" style="font-weight:600;">${chOtb>0?fmtNum(chOtb-chData.qty):'-'}</td>
+        <td>${sellthruBadge(chData.qty, chOtb)}</td>
+      </tr>`;
+      for(const s of chStores) {
+        html+=`<tr>
+          <td style="padding-left:36px;color:var(--text-secondary);">${s.store}</td>
+          <td class="num"></td>
+          <td class="num">${fmtNum(s.qty)}</td>
+          <td class="num">₩${fmtNum(s.amt)}</td>
+          <td class="num"></td><td></td>
+        </tr>`;
+      }
+    }
+  }
+
+  html+=`<tr class="total-row">
+    <td>Total</td>
+    <td class="num">${fmtNum(otbGrand)}</td>
+    <td class="num">${fmtNum(totalSold)}</td>
+    <td class="num">₩${fmtNum(totalAmt)}</td>
+    <td class="num">${fmtNum(otbGrand-totalSold)}</td>
+    <td>${sellthruBadge(totalSold, otbGrand)}</td>
+  </tr>`;
+  tbody.innerHTML=html;
+}
+
+// ─── 02 By Category ───
+function renderCategoryTable() {
+  const catMap={};
+  // Init from OTB
+  for(const p of Object.values(otbProducts)) {
+    const cat=p.category||'기타';
+    if(!catMap[cat]) catMap[cat]={cat, skus:new Set(), otb:0, qty:0, amt:0};
+    catMap[cat].skus.add(p.sku);
+    catMap[cat].otb+=p.otbTotal;
+  }
+  // Add sales
+  for(const d of allData) {
+    const p=otbProducts[d.sku]; if(!p) continue;
+    const cat=p.category||'기타';
+    if(!catMap[cat]) catMap[cat]={cat, skus:new Set(), otb:0, qty:0, amt:0};
+    catMap[cat].qty+=d.qty; catMap[cat].amt+=d.amount;
+  }
+
+  const cats=Object.values(catMap).sort((a,b)=>b.amt-a.amt);
+  const totalAmt=cats.reduce((s,c)=>s+c.amt,0);
+  const totalOtb=cats.reduce((s,c)=>s+c.otb,0);
+  const totalQty=cats.reduce((s,c)=>s+c.qty,0);
+
+  const tbody=document.querySelector('#categoryTable tbody');
+  let html='';
+  for(const c of cats) {
+    const remain=c.otb-c.qty;
+    html+=`<tr>
+      <td><span class="cat-tag">${c.cat}</span></td>
+      <td class="num">${c.skus.size}</td>
+      <td class="num">${fmtNum(c.otb)}</td>
+      <td class="num">${fmtNum(c.qty)}</td>
+      <td class="num">₩${fmtNum(c.amt)}</td>
+      <td class="num" style="${remain<0?'color:var(--rose);':''}">${fmtNum(remain)}</td>
+      <td>${sellthruBadge(c.qty, c.otb)}</td>
+      <td>${pctBar(c.amt/totalAmt, 'var(--accent)')}</td>
+    </tr>`;
+  }
+  html+=`<tr class="total-row">
+    <td>Total</td><td class="num">${Object.keys(otbProducts).length}</td>
+    <td class="num">${fmtNum(totalOtb)}</td>
+    <td class="num">${fmtNum(totalQty)}</td>
+    <td class="num">₩${fmtNum(totalAmt)}</td>
+    <td class="num">${fmtNum(totalOtb-totalQty)}</td>
+    <td>${sellthruBadge(totalQty, totalOtb)}</td>
+    <td>${pctBar(1,'#e2e8f0')}</td>
+  </tr>`;
+  tbody.innerHTML=html;
+}
+
+// ─── 03 By Date ───
+function setDateMode(mode) {
+  dateMode=mode;
+  document.querySelectorAll('#dateModeTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`#dateModeTabs .tab[onclick*="${mode}"]`).classList.add('active');
+  renderDateSection();
+}
+
+function renderDateSection() {
+  const dateMap={};
+  const channels=new Set();
+  for(const d of allData) {
+    const dt=d.date||'unknown';
+    if(!dateMap[dt]) dateMap[dt]={date:dt, qty:0, amt:0, byChannel:{}};
+    dateMap[dt].qty+=d.qty; dateMap[dt].amt+=d.amount;
+    if(!dateMap[dt].byChannel[d.channel]) dateMap[dt].byChannel[d.channel]={qty:0,amt:0};
+    dateMap[dt].byChannel[d.channel].qty+=d.qty;
+    dateMap[dt].byChannel[d.channel].amt+=d.amount;
+    channels.add(d.channel);
+  }
+  const dates=Object.values(dateMap).sort((a,b)=>a.date.localeCompare(b.date));
+  const chs=[...channels];
+  if(dates.length===0) return;
+
+  const vk=dateMode;
+  const maxVal=Math.max(...dates.map(d=>d[vk]));
+
+  // Chart
+  const chartEl=document.getElementById('dateChart');
+  let ch='';
+  for(const d of dates) {
+    const tv=d[vk], barH=maxVal>0?Math.max(4,(tv/maxVal)*100):0;
+    const dtObj=new Date(d.date+'T00:00:00');
+    const dayN=isNaN(dtObj)?'':DAY_NAMES[dtObj.getDay()];
+    const isWe=dtObj.getDay()===0||dtObj.getDay()===6;
+    let seg='';
+    for(const c of chs) {
+      const cv=d.byChannel[c]?.[vk]||0; if(cv<=0) continue;
+      seg+=`<div class="date-bar-seg" style="height:${(cv/tv)*barH}%;background:${CHANNEL_COLORS[c]||'#6b7280'};" title="${c}: ${vk==='amt'?'₩'+fmtNum(cv):fmtNum(cv)}"></div>`;
+    }
+    ch+=`<div class="date-bar-group">
+      <div class="date-bar-val">${vk==='amt'?fmtCurrency(tv):fmtNum(tv)}</div>
+      <div class="date-bar-stack" style="height:${barH}%;">${seg}</div>
+      <div class="date-bar-label" style="${isWe?'color:var(--amber);':''}">${d.date.slice(5)}<br>${dayN}</div>
+    </div>`;
+  }
+  chartEl.innerHTML=ch;
+
+  // Table
+  const thead=document.querySelector('#dateTable thead tr');
+  let hh='<th>날짜</th><th>요일</th>';
+  for(const c of chs) hh+=`<th class="num-col">${c}</th>`;
+  hh+='<th class="num-col">Total</th><th>Share</th>';
+  thead.innerHTML=hh;
+
+  const totalAll=dates.reduce((s,d)=>s+d[vk],0);
+  const tbody=document.querySelector('#dateTable tbody');
+  let html='';
+  for(const d of dates) {
+    const dtObj=new Date(d.date+'T00:00:00');
+    const dayN=isNaN(dtObj)?'':DAY_NAMES[dtObj.getDay()];
+    const isWe=dtObj.getDay()===0||dtObj.getDay()===6;
+    html+=`<tr class="${isWe?'weekend':''}">`;
+    html+=`<td style="font-family:var(--font-mono);font-size:12px;">${d.date}</td>`;
+    html+=`<td style="font-size:12px;${isWe?'color:var(--amber);font-weight:600;':'color:var(--text-secondary);'}">${dayN}</td>`;
+    for(const c of chs) {
+      const cv=d.byChannel[c]?.[vk]||0;
+      html+=`<td class="num" style="${cv===0?'color:var(--text-dim);':''}">${cv===0?'-':(vk==='amt'?'₩'+fmtNum(cv):fmtNum(cv))}</td>`;
+    }
+    html+=`<td class="num" style="font-weight:600;">${vk==='amt'?'₩'+fmtNum(d[vk]):fmtNum(d[vk])}</td>`;
+    html+=`<td>${pctBar(d[vk]/totalAll,'var(--accent)')}</td></tr>`;
+  }
+  html+='<tr class="total-row"><td>Total</td><td></td>';
+  for(const c of chs) { let t=0; for(const d of dates) t+=d.byChannel[c]?.[vk]||0; html+=`<td class="num">${vk==='amt'?'₩'+fmtNum(t):fmtNum(t)}</td>`; }
+  html+=`<td class="num">${vk==='amt'?'₩'+fmtNum(totalAll):fmtNum(totalAll)}</td><td>${pctBar(1,'#d1d5db')}</td></tr>`;
+  tbody.innerHTML=html;
+}
+
+// ─── 04 By Product ───
+function getProductAgg() {
+  const map={};
+  // Init from OTB
+  for(const[sku,p] of Object.entries(otbProducts)) {
+    map[sku]={sku, name:p.name, category:p.category, otb:p.otbTotal, price:p.price, qty:0, amt:0, channels:new Set()};
+  }
+  // Add sales
+  for(const d of allData) {
+    if(!map[d.sku]) continue;
+    map[d.sku].qty+=d.qty; map[d.sku].amt+=d.amount;
+    map[d.sku].channels.add(d.channel);
+  }
+  const result=Object.values(map);
+  for(const p of result) {
+    p.remaining=p.otb-p.qty;
+    p.sellthru=p.otb>0?p.qty/p.otb*100:-1;
+  }
+  return result;
+}
+
+function renderProductTable() {
+  const search=(document.getElementById('productSearch').value||'').toLowerCase();
+  let products=getProductAgg();
+  if(search) products=products.filter(p=>p.sku.toLowerCase().includes(search)||p.name.toLowerCase().includes(search)||p.category.toLowerCase().includes(search));
+
+  products.sort((a,b)=>{
+    let av=a[productSortKey], bv=b[productSortKey];
+    if(typeof av==='string') return productSortDir*av.localeCompare(bv,'ko');
+    return productSortDir*(av-bv);
+  });
+
+  const tbody=document.querySelector('#productTable tbody');
+  let html='';
+  for(const p of products) {
+    const remStyle=p.remaining<0?'color:var(--rose);':'';
+    html+=`<tr>
+      <td class="sku">${p.sku}</td>
+      <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;" title="${p.name}">${p.name}</td>
+      <td><span class="cat-tag">${p.category||'-'}</span></td>
+      <td class="num">${fmtNum(p.otb)}</td>
+      <td class="num">${fmtNum(p.qty)}</td>
+      <td class="num">₩${fmtNum(p.amt)}</td>
+      <td class="num" style="${remStyle}">${fmtNum(p.remaining)}</td>
+      <td class="num">${sellthruBadge(p.qty,p.otb)}</td>
+    </tr>`;
+  }
+  if(!html) html='<tr><td colspan="8" class="empty-state">데이터가 없습니다</td></tr>';
+  tbody.innerHTML=html;
+
+  document.querySelectorAll('#productTable th.sortable').forEach(th=>{
+    th.classList.remove('sort-asc','sort-desc');
+    if(th.dataset.sort===productSortKey) th.classList.add(productSortDir===1?'sort-asc':'sort-desc');
+  });
+}
+
+document.addEventListener('click', e=>{
+  const th=e.target.closest('#productTable th.sortable');
+  if(!th) return;
+  const key=th.dataset.sort;
+  if(productSortKey===key) productSortDir*=-1;
+  else { productSortKey=key; productSortDir=key==='name'||key==='sku'||key==='category'?1:-1; }
+  renderProductTable();
+});
+
+// ─── 05 Cross-tab ───
+function setCrossTabMode(mode) {
+  crossTabMode=mode;
+  document.querySelectorAll('#crossTabTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`#crossTabTabs .tab[onclick*="${mode}"]`).classList.add('active');
+  renderCrossTab();
+}
+
+function renderCrossTab() {
+  const storeList=[...new Set(allData.map(d=>d.channel==='오프라인'?d.store:d.channel))];
+  const products=getProductAgg().sort((a,b)=>b.amt-a.amt);
+  const isST=crossTabMode==='sellthru';
+  const vk=isST?'qty':crossTabMode;
+
+  const matrix={};
+  for(const d of allData) {
+    const store=d.channel==='오프라인'?d.store:d.channel;
+    const key=d.sku+'|||'+store;
+    if(!matrix[key]) matrix[key]={qty:0,amt:0};
+    matrix[key].qty+=d.qty; matrix[key].amt+=d.amount;
+  }
+
+  const thead=document.querySelector('#crossTabTable thead tr');
+  let hh='<th style="min-width:200px;">상품명</th><th class="num-col">880코드</th>';
+  if(isST) hh+='<th class="num-col">OTB</th>';
+  for(const s of storeList) hh+=`<th class="num-col" style="min-width:90px;">${s}</th>`;
+  hh+='<th class="num-col" style="min-width:90px;">Total</th>';
+  thead.innerHTML=hh;
+
+  const tbody=document.querySelector('#crossTabTable tbody');
+  let html='';
+  for(const p of products) {
+    html+=`<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;" title="${p.name}">${p.name}</td><td class="sku">${p.sku}</td>`;
+    if(isST) html+=`<td class="num" style="color:var(--text-secondary);">${p.otb>0?fmtNum(p.otb):'-'}</td>`;
+    let rt=0;
+    for(const s of storeList) {
+      const cell=matrix[p.sku+'|||'+s]; const val=cell?cell[vk]:0; rt+=val;
+      if(isST) {
+        if(p.otb>0&&val>0){ const pc=(val/p.otb*100).toFixed(1); const lv=pc>=80?'high':pc>=40?'mid':'low'; html+=`<td class="num sellthru-val ${lv}">${pc}%</td>`; }
+        else html+=`<td class="num" style="color:var(--text-dim);">-</td>`;
+      } else {
+        html+=`<td class="num" style="${val===0?'color:var(--text-dim);':''}">${val===0?'-':(crossTabMode==='amt'?'₩'+fmtNum(val):fmtNum(val))}</td>`;
+      }
+    }
+    if(isST) html+=`<td class="num">${sellthruBadge(rt,p.otb)}</td>`;
+    else html+=`<td class="num" style="font-weight:600;">${crossTabMode==='amt'?'₩'+fmtNum(rt):fmtNum(rt)}</td>`;
+    html+='</tr>';
+  }
+  // Totals
+  const totOtb=products.reduce((s,p)=>s+p.otb,0);
+  html+='<tr class="total-row"><td>Total</td><td></td>';
+  if(isST) html+=`<td class="num">${totOtb>0?fmtNum(totOtb):'-'}</td>`;
+  let gt=0;
+  for(const s of storeList) {
+    let st=0; for(const p of products){ const c=matrix[p.sku+'|||'+s]; if(c) st+=c[vk]; } gt+=st;
+    if(isST) html+=`<td class="num">${totOtb>0?(st/totOtb*100).toFixed(1)+'%':'-'}</td>`;
+    else html+=`<td class="num">${crossTabMode==='amt'?'₩'+fmtNum(st):fmtNum(st)}</td>`;
+  }
+  if(isST) html+=`<td class="num">${sellthruBadge(gt,totOtb)}</td>`;
+  else html+=`<td class="num">${crossTabMode==='amt'?'₩'+fmtNum(gt):fmtNum(gt)}</td>`;
+  html+='</tr>';
+  tbody.innerHTML=html;
+}
+
+// ─── 06 Raw Data ───
+function renderRawFilters() {
+  const chs=[...new Set(allData.map(d=>d.channel))];
+  const wrap=document.getElementById('rawFilters');
+  let html=`<button class="channel-filter ${rawChannelFilter==='all'?'active':''}" onclick="setRawFilter('all')">전체</button>`;
+  for(const ch of chs) html+=`<button class="channel-filter ${rawChannelFilter===ch?'active':''}" onclick="setRawFilter('${ch}')">${ch}</button>`;
+  wrap.innerHTML=html;
+}
+function setRawFilter(ch) { rawChannelFilter=ch; rawPage=0; renderRawFilters(); renderRawTable(); }
+
+function getFilteredRaw() {
+  let data=rawChannelFilter==='all'?allData:allData.filter(d=>d.channel===rawChannelFilter);
+  const search=(document.getElementById('rawSearch')?.value||'').toLowerCase();
+  if(search) data=data.filter(d=>d.sku.toLowerCase().includes(search)||d.name.toLowerCase().includes(search)||d.store.toLowerCase().includes(search));
+  return data;
+}
+
+function renderRawTable() {
+  const data=getFilteredRaw();
+  const totalPages=Math.ceil(data.length/RAW_PAGE_SIZE);
+  if(rawPage>=totalPages) rawPage=Math.max(0,totalPages-1);
+  const start=rawPage*RAW_PAGE_SIZE;
+  const page=data.slice(start,start+RAW_PAGE_SIZE);
+  const tbody=document.querySelector('#rawTable tbody');
+  let html='';
+  for(const d of page) {
+    const cfg=CHANNEL_CONFIGS[d.channel];
+    html+=`<tr>
+      <td><span class="channel-tag ${cfg.tagClass}">${d.channel}</span></td>
+      <td style="color:var(--text-secondary);">${d.store!==d.channel?d.store:''}</td>
+      <td style="font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);">${d.date}</td>
+      <td class="sku">${d.sku}</td>
+      <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;" title="${d.name}">${d.name}</td>
+      <td class="num">${fmtNum(d.qty)}</td>
+      <td class="num">₩${fmtNum(d.amount)}</td>
+    </tr>`;
+  }
+  if(!html) html='<tr><td colspan="7" class="empty-state">데이터가 없습니다</td></tr>';
+  tbody.innerHTML=html;
+  const pag=document.getElementById('rawPagination');
+  pag.innerHTML=`
+    <span class="page-info">${fmtNum(data.length)}건 중 ${fmtNum(Math.max(start+1,0))}-${fmtNum(Math.min(start+RAW_PAGE_SIZE,data.length))}</span>
+    <div class="page-btns">
+      <button class="page-btn" onclick="rawPage=0;renderRawTable()" ${rawPage===0?'disabled':''}>&laquo;</button>
+      <button class="page-btn" onclick="rawPage--;renderRawTable()" ${rawPage===0?'disabled':''}>&lsaquo; 이전</button>
+      <button class="page-btn" onclick="rawPage++;renderRawTable()" ${rawPage>=totalPages-1?'disabled':''}>다음 &rsaquo;</button>
+      <button class="page-btn" onclick="rawPage=${totalPages-1};renderRawTable()" ${rawPage>=totalPages-1?'disabled':''}>&raquo;</button>
+    </div>`;
+}
+
+// ─── Excel Download ───
+function downloadExcel() {
+  const wb=XLSX.utils.book_new();
+
+  // 1. By Store
+  const storeMap={};
+  for(const d of allData) {
+    const key=d.channel+' - '+d.store;
+    if(!storeMap[key]) storeMap[key]={channel:d.channel, store:d.store, qty:0, amt:0};
+    storeMap[key].qty+=d.qty; storeMap[key].amt+=d.amount;
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+    Object.values(storeMap).sort((a,b)=>b.amt-a.amt).map(s=>({ Channel:s.channel, Store:s.store, Units:s.qty, 'Sales Amount':s.amt }))
+  ), 'By Store');
+
+  // 2. By Category
+  const catMap={};
+  for(const p of Object.values(otbProducts)) {
+    const cat=p.category||'기타';
+    if(!catMap[cat]) catMap[cat]={cat, otb:0, qty:0, amt:0};
+    catMap[cat].otb+=p.otbTotal;
+  }
+  for(const d of allData) {
+    const p=otbProducts[d.sku]; if(!p) continue;
+    const cat=p.category||'기타';
+    if(catMap[cat]) { catMap[cat].qty+=d.qty; catMap[cat].amt+=d.amount; }
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+    Object.values(catMap).sort((a,b)=>b.amt-a.amt).map(c=>({
+      '구분자':c.cat, OTB:c.otb, '판매수량':c.qty, '판매금액':c.amt,
+      '잔여':c.otb-c.qty, 'Sellthru':c.otb>0?(c.qty/c.otb*100).toFixed(1)+'%':'',
+    }))
+  ), 'By Category');
+
+  // 3. By Date
+  const dateMap={};
+  const chs2=[...new Set(allData.map(d=>d.channel))];
+  for(const d of allData) {
+    if(!dateMap[d.date]) dateMap[d.date]={date:d.date,qty:0,amt:0,byCh:{}};
+    dateMap[d.date].qty+=d.qty; dateMap[d.date].amt+=d.amount;
+    if(!dateMap[d.date].byCh[d.channel]) dateMap[d.date].byCh[d.channel]={qty:0,amt:0};
+    dateMap[d.date].byCh[d.channel].qty+=d.qty; dateMap[d.date].byCh[d.channel].amt+=d.amount;
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
+    Object.values(dateMap).sort((a,b)=>a.date.localeCompare(b.date)).map(d=>{
+      const row={'날짜':d.date};
+      const dtObj=new Date(d.date+'T00:00:00');
+      row['요일']=isNaN(dtObj)?'':DAY_NAMES[dtObj.getDay()];
+      for(const c of chs2){ row[c+'_수량']=d.byCh[c]?.qty||0; row[c+'_금액']=d.byCh[c]?.amt||0; }
+      row['Total_수량']=d.qty; row['Total_금액']=d.amt;
+      return row;
+    })
+  ), 'By Date');
+
+  // 4. By Product
+  const products=getProductAgg().sort((a,b)=>b.amt-a.amt);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(products.map(p=>({
+    '880코드':p.sku, '상품명':p.name, '구분자':p.category,
+    '가격':p.price, OTB:p.otb, '판매수량':p.qty, '판매금액':p.amt,
+    '잔여':p.remaining, 'Sellthru':p.otb>0?(p.qty/p.otb*100).toFixed(1)+'%':'',
+    'Channels':[...p.channels].join(', '),
+  }))), 'By Product');
+
+  // 5. Raw Data
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(allData.map(d=>({
+    Channel:d.channel, Store:d.store, Date:d.date,
+    '880코드':d.sku, '상품명':d.name, '수량':d.qty, '판매금액':d.amount,
+  }))), 'Raw Data');
+
+  const today=new Date().toISOString().slice(0,10).replace(/-/g,'');
+  XLSX.writeFile(wb, `Project_Report_${today}.xlsx`);
+}
+
+// ─── Events ───
+const otbZone=document.getElementById('otbZone');
+const salesZone=document.getElementById('salesZone');
+
+['dragover','dragleave','drop'].forEach(ev=>{
+  otbZone.addEventListener(ev, e=>{ e.preventDefault(); if(ev==='dragover') otbZone.classList.add('dragover'); else otbZone.classList.remove('dragover'); if(ev==='drop') handleOtbFile(e.dataTransfer.files); });
+  salesZone.addEventListener(ev, e=>{ e.preventDefault(); if(ev==='dragover') salesZone.classList.add('dragover'); else salesZone.classList.remove('dragover'); if(ev==='drop') handleSalesFiles(e.dataTransfer.files); });
+});
+
+document.getElementById('otbInput').addEventListener('change', e=>handleOtbFile(e.target.files));
+document.getElementById('salesInput').addEventListener('change', e=>handleSalesFiles(e.target.files));
+</script>
+</body>
+</html>
